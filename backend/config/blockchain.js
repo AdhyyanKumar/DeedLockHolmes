@@ -76,7 +76,12 @@ function getProgram() {
     throw new Error("Missing PROGRAM_ID and IDL address");
   }
   const programId = new PublicKey(address);
-  return new Program(idl, programId, provider);
+  try {
+    return new Program(idl, programId, provider);
+  } catch (error) {
+    const idlWithAddress = { ...idl, address: programId.toBase58() };
+    return new Program(idlWithAddress, provider);
+  }
 }
 
 module.exports = {

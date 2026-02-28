@@ -4,7 +4,7 @@ const { getProgram } = require("../config/blockchain");
 
 class SolanaService {
   constructor() {
-    this.program = getProgram();
+    this.program = null;
     this.getPropertyPDA = this.getPropertyPDA.bind(this);
     this.registerProperty = this.registerProperty.bind(this);
     this.getProperty = this.getProperty.bind(this);
@@ -15,10 +15,18 @@ class SolanaService {
     this.registerOnChain = this.registerOnChain.bind(this);
   }
 
+  getProgramInstance() {
+    if (!this.program) {
+      this.program = getProgram();
+    }
+    return this.program;
+  }
+
   async getPropertyPDA(propertyId) {
+    const program = this.getProgramInstance();
     const [pda, bump] = await PublicKey.findProgramAddress(
       [Buffer.from("property"), Buffer.from(propertyId)],
-      this.program.programId
+      program.programId
     );
     return { pda, bump };
   }
@@ -29,9 +37,10 @@ class SolanaService {
 
       const { propertyId, address, ownerId, ownerName, deedHash, salePrice } = propertyData;
       const { pda } = await this.getPropertyPDA(propertyId);
-      const authority = this.program.provider.wallet.publicKey;
+      const program = this.getProgramInstance();
+      const authority = program.provider.wallet.publicKey;
 
-      const tx = await this.program.methods
+      const tx = await program.methods
         .registerProperty(propertyId, address, ownerId, ownerName, deedHash, new BN(salePrice))
         .accounts({
           property: pda,
@@ -56,8 +65,9 @@ class SolanaService {
 
   async getProperty(propertyId) {
     try {
+      const program = this.getProgramInstance();
       const { pda } = await this.getPropertyPDA(propertyId);
-      const propertyAccount = await this.program.account.property.fetch(pda);
+      const propertyAccount = await program.account.property.fetch(pda);
 
       return {
         propertyId: propertyAccount.propertyId,
@@ -78,7 +88,8 @@ class SolanaService {
 
   async getAllProperties() {
     try {
-      const properties = await this.program.account.property.all();
+      const program = this.getProgramInstance();
+      const properties = await program.account.property.all();
 
       return properties.map((p) => ({
         publicKey: p.publicKey.toBase58(),
@@ -100,10 +111,11 @@ class SolanaService {
 
   async transferProperty(propertyId, newOwnerId, newOwnerName, newDeedHash, newSalePrice) {
     try {
+      const program = this.getProgramInstance();
       const { pda } = await this.getPropertyPDA(propertyId);
-      const authority = this.program.provider.wallet.publicKey;
+      const authority = program.provider.wallet.publicKey;
 
-      const tx = await this.program.methods
+      const tx = await program.methods
         .transferProperty(newOwnerId, newOwnerName, newDeedHash, new BN(newSalePrice))
         .accounts({
           property: pda,
@@ -145,26 +157,28 @@ class SolanaService {
   }
 
   async getNetworkInfo() {
-    const version = await this.program.provider.connection.getVersion();
-    const slot = await this.program.provider.connection.getSlot();
+    const program = this.getProgramInstance();
+    const version = await program.provider.connection.getVersion();
+    const slot = await program.provider.connection.getSlot();
 
     return {
       network: process.env.SOLANA_NETWORK,
       rpcUrl: process.env.SOLANA_RPC_URL,
-      programId: this.program.programId.toBase58(),
+      programId: program.programId.toBase58(),
       version,
       currentSlot: slot
     };
   }
 
   async registerOnChain({ deedHash, propertyAddress, ownerName, confidence, fraudRisk }) {
-    const authority = this.program.provider.wallet.publicKey;
+    const program = this.getProgramInstance();
+    const authority = program.provider.wallet.publicKey;
     const [propertyPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("property"), authority.toBuffer(), Buffer.from(deedHash)],
-      this.program.programId
+      program.programId
     );
 
-    const txSig = await this.program.methods
+    const txSig = await program.methods
       .registerProperty(propertyAddress, ownerName, deedHash, confidence, fraudRisk)
       .accounts({
         property: propertyPda,
