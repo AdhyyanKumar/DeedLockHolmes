@@ -46,13 +46,12 @@ function getProvider() {
 
 function getProgram() {
   const provider = getProvider();
-  const address = process.env.PROGRAM_ID || idl.address;
+  const address = (process.env.PROGRAM_ID || idl.address || "").trim();
   if (!address) {
     throw new Error("Missing PROGRAM_ID and IDL address");
   }
   const programId = new PublicKey(address);
-  const idlWithAddress = { ...idl, address: programId.toBase58() };
-  return new Program(idlWithAddress, provider);
+  return new Program(idl, programId, provider);
 }
 
 module.exports = {
