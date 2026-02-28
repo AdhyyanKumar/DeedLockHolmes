@@ -5,7 +5,32 @@ const path = require("path");
 require("dotenv").config();
 
 const idlPath = path.join(__dirname, "../idl/property_registry.json");
-const idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
+const rawIdl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
+
+function normalizeIdlForLegacyAnchor(inputIdl) {
+  const nextIdl = JSON.parse(JSON.stringify(inputIdl));
+  const typeMap = new Map(
+    Array.isArray(nextIdl.types)
+      ? nextIdl.types.map((item) => [String(item.name || ""), item.type])
+      : [],
+  );
+
+  if (Array.isArray(nextIdl.accounts)) {
+    nextIdl.accounts = nextIdl.accounts.map((account) => {
+      if (account && account.type) return account;
+      const accountType = typeMap.get(String(account?.name || ""));
+      if (!accountType) return account;
+      return {
+        ...account,
+        type: accountType,
+      };
+    });
+  }
+
+  return nextIdl;
+}
+
+const idl = normalizeIdlForLegacyAnchor(rawIdl);
 
 const rpcUrl = process.env.SOLANA_RPC_URL || process.env.SOLANA_RPC;
 if (!rpcUrl) {
