@@ -13,8 +13,8 @@ interface ProgressStepsProps {
 
 export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
   return (
-    <div className="space-y-4 rounded-2.5xl border border-line bg-[#111A33]/82 p-6 shadow-card backdrop-blur">
-      <h3 className="text-base font-semibold text-ink">Validation in progress</h3>
+    <div className="space-y-4 rounded-2.5xl border border-emerald-200/30 bg-white/10 p-6 shadow-card backdrop-blur">
+      <h3 className="text-base font-semibold text-white">Validation in progress</h3>
       <div className="space-y-3">
         {STEPS.map((step, index) => {
           const stepNumber = index + 1;
@@ -26,7 +26,7 @@ export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
               key={step}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-3 rounded-xl border border-line/90 bg-[#0E1730] px-4 py-3"
+              className="flex items-center gap-3 rounded-xl border border-emerald-200/30 bg-[#0A2E23]/55 px-4 py-3"
             >
               <span className="flex h-6 w-6 items-center justify-center text-brand">
                 {isDone ? (
@@ -40,7 +40,7 @@ export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
               <span
                 className={[
                   "text-sm",
-                  isActive || isDone ? "text-ink" : "text-slate-400",
+                  isActive || isDone ? "text-white" : "text-emerald-100/70",
                 ].join(" ")}
               >
                 {step}

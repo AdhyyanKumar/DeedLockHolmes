@@ -19,7 +19,9 @@ const pageTransition = {
 export default function App() {
   const location = useLocation();
   const isHeroRoute =
-    location.pathname === "/" || location.pathname === "/dashboard";
+    location.pathname === "/" ||
+    location.pathname === "/dashboard" ||
+    location.pathname === "/register";
 
   return (
     <div className="app-shell text-ink">

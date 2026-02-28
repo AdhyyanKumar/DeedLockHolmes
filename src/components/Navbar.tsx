@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { UserCircle2 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { loginMock, signupMock } from "../api/authApi";
@@ -25,7 +25,9 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const isHeroRoute =
-    location.pathname === "/" || location.pathname === "/dashboard";
+    location.pathname === "/" ||
+    location.pathname === "/dashboard" ||
+    location.pathname === "/register";
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -33,6 +35,21 @@ export default function Navbar() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const authParam = new URLSearchParams(location.search).get("auth");
+
+  useEffect(() => {
+    if (authParam === "login" || authParam === "signup") {
+      setModalMode(authParam);
+      setMenuOpen(false);
+    }
+  }, [authParam]);
+
+  function closeModal() {
+    setModalMode(null);
+    if (location.pathname === "/" && location.search) {
+      navigate("/", { replace: true });
+    }
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,7 +102,7 @@ export default function Navbar() {
               isHeroRoute ? "text-3xl text-white sm:text-4xl" : "text-lg text-ink",
             ].join(" ")}
             >
-              DeedLockHomes
+              DeedLock Holmes
             </span>
             <span
             className={[
@@ -257,7 +274,7 @@ export default function Navbar() {
             <div className="mt-6 flex gap-2">
               <button
                 type="button"
-                onClick={() => setModalMode(null)}
+                onClick={closeModal}
                 className="w-full rounded-xl border border-emerald-200/40 px-4 py-2.5 text-sm font-semibold text-emerald-50 hover:bg-white/10"
               >
                 Cancel

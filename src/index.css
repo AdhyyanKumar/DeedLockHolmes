@@ -71,3 +71,216 @@ a {
   position: relative;
   z-index: 1;
 }
+
+.neighborhood-scene {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42%;
+  pointer-events: none;
+}
+
+.scene-layer {
+  position: absolute;
+  left: 0;
+  width: 200%;
+  display: flex;
+}
+
+.scene-layer-far {
+  bottom: 34%;
+  opacity: 0.35;
+}
+
+.scene-layer-near {
+  bottom: 18%;
+  opacity: 0.62;
+}
+
+.scene-strip {
+  width: 50%;
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+}
+
+.scene-unit {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.scene-house {
+  position: relative;
+  border-radius: 0.45rem;
+  background: rgba(236, 253, 245, 0.72);
+}
+
+.scene-house::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 12px solid rgba(236, 253, 245, 0.72);
+  top: -11px;
+}
+
+.scene-house-far {
+  width: 34px;
+  height: 26px;
+}
+
+.scene-house-near {
+  width: 54px;
+  height: 42px;
+}
+
+.scene-tree {
+  border-radius: 999px;
+  background: rgba(167, 243, 208, 0.9);
+  position: relative;
+}
+
+.scene-tree::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 83, 45, 0.65);
+  border-radius: 1px;
+}
+
+.scene-tree-far {
+  width: 7px;
+  height: 7px;
+}
+
+.scene-tree-far::after {
+  width: 2px;
+  height: 7px;
+  bottom: -6px;
+}
+
+.scene-tree-near {
+  width: 10px;
+  height: 10px;
+}
+
+.scene-tree-near::after {
+  width: 2px;
+  height: 10px;
+  bottom: -9px;
+}
+
+.scene-road {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10%;
+  height: 20%;
+  background:
+    linear-gradient(to bottom, rgba(4, 120, 87, 0.12), rgba(4, 120, 87, 0.05)),
+    rgba(2, 44, 34, 0.45);
+  border-top: 1px solid rgba(167, 243, 208, 0.22);
+}
+
+.scene-road::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  background-image: linear-gradient(to right, rgba(236, 253, 245, 0.55) 50%, transparent 50%);
+  background-size: 34px 2px;
+  opacity: 0.7;
+}
+
+.scene-car {
+  position: absolute;
+  left: -14%;
+  bottom: 14%;
+  width: 78px;
+  height: 38px;
+}
+
+.scene-car-top {
+  position: absolute;
+  left: 20px;
+  top: 4px;
+  width: 35px;
+  height: 12px;
+  border-radius: 10px 10px 4px 4px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.scene-car-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  height: 21px;
+  border-radius: 10px 12px 8px 8px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.scene-car-window {
+  position: absolute;
+  left: 28px;
+  top: 4px;
+  width: 20px;
+  height: 9px;
+  border-radius: 4px;
+  background: rgba(15, 59, 46, 0.45);
+}
+
+.scene-wheel {
+  position: absolute;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(6, 78, 59, 0.9);
+  border: 2px solid rgba(236, 253, 245, 0.75);
+  animation: wheel-spin 1s linear infinite;
+}
+
+.scene-wheel-left {
+  left: 12px;
+}
+
+.scene-wheel-right {
+  right: 12px;
+}
+
+.scene-stars {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 70%;
+  pointer-events: none;
+}
+
+.scene-star {
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(236, 253, 245, 0.92);
+  box-shadow: 0 0 8px rgba(236, 253, 245, 0.7);
+  opacity: 0.35;
+}
+
+@keyframes wheel-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

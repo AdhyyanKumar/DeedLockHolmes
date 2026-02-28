@@ -1,4 +1,4 @@
-# DeedLockHomes Frontend
+# DeedLock Holmes Frontend
 
 Premium, verification-first frontend for a property registration MVP.
 
@@ -46,7 +46,7 @@ npm run preview
   - returns a rejection reason.
 - `getAllProperties()` returns persisted records from `localStorage`.
 
-Storage key: `deedlockhomes_properties_v1`
+Storage key: `deedlock_holmes_properties_v1`
 
 ## Structure
 

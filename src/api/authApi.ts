@@ -1,4 +1,4 @@
-const USER_KEY = "deedlockhomes_auth_user_v1";
+const USER_KEY = "deedlock_holmes_auth_user_v1";
 
 export interface MockUser {
   name: string;

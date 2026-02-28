@@ -1,6 +1,6 @@
 import type { Property, RegisterPropertyResult } from "../types/property";
 
-const STORAGE_KEY = "deedlockhomes_properties_v1";
+const STORAGE_KEY = "deedlock_holmes_properties_v1";
 
 const SAMPLE_ADDRESSES = [
   "1428 Harbor View Dr, San Diego, CA",
