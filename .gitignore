@@ -1,0 +1,11 @@
+# Environment files
+**/.env
+**/.env.*
+**/*.env
+**/*.env.*
+**/.envrc
+
+# Keep safe templates
+!**/.env.example
+!**/.env.*.example
+!**/*.env.example
