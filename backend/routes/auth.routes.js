@@ -34,18 +34,23 @@ router.get("/google/callback", async (req, res) => {
     const tokens = await exchangeCodeForTokens(req, String(code));
     const profile = await fetchGoogleProfile(tokens.access_token);
 
-    await snowflakeService.upsertAuthUser(profile);
-    await snowflakeService.insertAuthEvent({
-      id: crypto.randomUUID(),
-      provider: profile.provider,
-      provider_user_id: profile.provider_user_id,
-      email: profile.email,
-      name: profile.name,
-      event_type: "login",
-      redirect_path: verifiedState.redirectPath,
-      ip_address: req.ip,
-      user_agent: req.get("user-agent") || "",
-    });
+    // Auth should not fail if analytics storage is temporarily unavailable.
+    try {
+      await snowflakeService.upsertAuthUser(profile);
+      await snowflakeService.insertAuthEvent({
+        id: crypto.randomUUID(),
+        provider: profile.provider,
+        provider_user_id: profile.provider_user_id,
+        email: profile.email,
+        name: profile.name,
+        event_type: "login",
+        redirect_path: verifiedState.redirectPath,
+        ip_address: req.ip,
+        user_agent: req.get("user-agent") || "",
+      });
+    } catch (snowflakeError) {
+      console.error("Auth logging failed (continuing login):", snowflakeError.message);
+    }
 
     setSessionCookie(res, profile);
     return res.redirect(`${getFrontendUrl()}${getSafeRedirectPath(verifiedState.redirectPath)}`);
