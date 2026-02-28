@@ -1,7 +1,1 @@
-const crypto = require("crypto");
-
-function sha256Hex(buffer) {
-  return crypto.createHash("sha256").update(buffer).digest("hex");
-}
-
-module.exports = { sha256Hex };
+module.exports = require("./utils/hash");
