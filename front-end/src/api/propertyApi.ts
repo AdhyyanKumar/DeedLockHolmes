@@ -1,6 +1,6 @@
 import type { Property, RegisterPropertyResult } from "../types/property";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 export async function registerProperty(
   file: File,
@@ -19,7 +19,7 @@ export async function registerProperty(
   formData.append("property_address", propertyAddress);
   formData.append("owner_name", ownerName);
 
-  const response = await fetch(`${API_BASE_URL}/register`, {
+  const response = await fetch(`${API_BASE_URL}/properties/register`, {
     method: "POST",
     body: formData,
     credentials: "include",
@@ -53,6 +53,9 @@ export async function getAllProperties(): Promise<Property[]> {
     throw new Error(`Failed to load properties with ${response.status}`);
   }
 
-  const payload = (await response.json()) as { items: Property[] };
-  return payload.items;
+  const payload = (await response.json()) as {
+    data?: Property[];
+    items?: Property[];
+  };
+  return payload.items ?? payload.data ?? [];
 }

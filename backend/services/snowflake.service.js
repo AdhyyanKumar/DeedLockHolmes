@@ -35,10 +35,74 @@ class SnowflakeService {
             process.env.SNOWFLAKE_DATABASE || process.env.SF_DATABASE
           );
           console.log("Schema:", process.env.SNOWFLAKE_SCHEMA || process.env.SF_SCHEMA);
-          resolve(conn);
+          this.ensureSchema()
+            .then(() => resolve(conn))
+            .catch(reject);
         }
       });
     });
+  }
+
+  async ensureSchema() {
+    const statements = [
+      `
+        CREATE TABLE IF NOT EXISTS AUTH_USERS (
+          provider STRING,
+          provider_user_id STRING,
+          email STRING,
+          name STRING,
+          given_name STRING,
+          family_name STRING,
+          picture STRING,
+          email_verified BOOLEAN,
+          last_login_at TIMESTAMP_NTZ,
+          created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+        )
+      `,
+      `
+        CREATE TABLE IF NOT EXISTS AUTH_EVENTS (
+          id STRING,
+          provider STRING,
+          provider_user_id STRING,
+          email STRING,
+          name STRING,
+          event_type STRING,
+          redirect_path STRING,
+          ip_address STRING,
+          user_agent STRING,
+          created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+        )
+      `,
+      `
+        CREATE TABLE IF NOT EXISTS PROPERTY_ANALYTICS (
+          id STRING,
+          property_address STRING,
+          owner_name STRING,
+          deed_hash STRING,
+          gemini_confidence FLOAT,
+          fraud_risk FLOAT,
+          tx_signature STRING,
+          property_pda STRING,
+          notes STRING,
+          registered_by_provider STRING,
+          registered_by_provider_user_id STRING,
+          registered_by_email STRING,
+          registered_by_name STRING,
+          created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+        )
+      `,
+      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS property_pda STRING",
+      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS notes STRING",
+      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS registered_by_provider STRING",
+      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS registered_by_provider_user_id STRING",
+      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS registered_by_email STRING",
+      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS registered_by_name STRING",
+      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()",
+    ];
+
+    for (const statement of statements) {
+      await this.executeQuery(statement);
+    }
   }
 
   async executeQuery(sqlText, binds = []) {
@@ -93,6 +157,143 @@ class SnowflakeService {
       console.error("Error storing property in Snowflake:", error);
       throw error;
     }
+  }
+
+  async upsertAuthUser(user) {
+    await this.executeQuery(
+      `
+        DELETE FROM AUTH_USERS
+        WHERE provider = ? AND provider_user_id = ?
+      `,
+      [user.provider, user.provider_user_id]
+    );
+
+    await this.executeQuery(
+      `
+        INSERT INTO AUTH_USERS
+          (
+            provider,
+            provider_user_id,
+            email,
+            name,
+            given_name,
+            family_name,
+            picture,
+            email_verified,
+            last_login_at,
+            created_at
+          )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
+      `,
+      [
+        user.provider,
+        user.provider_user_id,
+        user.email,
+        user.name,
+        user.given_name,
+        user.family_name,
+        user.picture,
+        user.email_verified
+      ]
+    );
+  }
+
+  async insertAuthEvent(event) {
+    await this.executeQuery(
+      `
+        INSERT INTO AUTH_EVENTS
+          (
+            id,
+            provider,
+            provider_user_id,
+            email,
+            name,
+            event_type,
+            redirect_path,
+            ip_address,
+            user_agent,
+            created_at
+          )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())
+      `,
+      [
+        event.id,
+        event.provider,
+        event.provider_user_id,
+        event.email,
+        event.name,
+        event.event_type,
+        event.redirect_path,
+        event.ip_address,
+        event.user_agent
+      ]
+    );
+  }
+
+  async insertPropertyAnalytics(record) {
+    await this.executeQuery(
+      `
+        INSERT INTO PROPERTY_ANALYTICS
+          (
+            id,
+            property_address,
+            owner_name,
+            deed_hash,
+            gemini_confidence,
+            fraud_risk,
+            tx_signature,
+            property_pda,
+            notes,
+            registered_by_provider,
+            registered_by_provider_user_id,
+            registered_by_email,
+            registered_by_name,
+            created_at
+          )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())
+      `,
+      [
+        record.id,
+        record.property_address,
+        record.owner_name,
+        record.deed_hash,
+        record.gemini_confidence,
+        record.fraud_risk,
+        record.tx_signature,
+        record.property_pda,
+        record.notes,
+        record.registered_by_provider,
+        record.registered_by_provider_user_id,
+        record.registered_by_email,
+        record.registered_by_name
+      ]
+    );
+  }
+
+  async listPropertyAnalytics(limit = 100) {
+    const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100));
+    const query = `
+      SELECT
+        id,
+        property_address,
+        owner_name,
+        deed_hash,
+        gemini_confidence,
+        fraud_risk,
+        tx_signature,
+        property_pda,
+        notes,
+        registered_by_provider,
+        registered_by_provider_user_id,
+        registered_by_email,
+        registered_by_name,
+        created_at
+      FROM PROPERTY_ANALYTICS
+      ORDER BY created_at DESC
+      LIMIT ${safeLimit}
+    `;
+
+    return this.executeQuery(query);
   }
 
   async getPropertyAnalytics() {

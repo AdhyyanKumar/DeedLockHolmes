@@ -1,13 +1,36 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require("crypto");
+const multer = require("multer");
 const solanaService = require('../services/solana.service');
 const snowflakeService = require('../services/snowflake.service');
 const geminiService = require('../services/gemini.service');
+const { requireAuth } = require("../auth");
+const { hashFile } = require("../utils/hash");
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 // GET /api/properties - Get all properties
 router.get('/', async (req, res) => {
   try {
-    const properties = await solanaService.getAllProperties();
+    const analyticsRows = await snowflakeService.listPropertyAnalytics(100);
+    const properties = analyticsRows.map((row) => ({
+      id: row.ID,
+      address: row.PROPERTY_ADDRESS,
+      owner: row.OWNER_NAME,
+      confidenceScore: Number(row.GEMINI_CONFIDENCE ?? 0),
+      fraudRisk:
+        Number(row.FRAUD_RISK ?? 0) >= 80
+          ? "High"
+          : Number(row.FRAUD_RISK ?? 0) >= 50
+            ? "Medium"
+            : "Low",
+      timestamp: new Date(row.CREATED_AT).toISOString(),
+      accountAddress: row.PROPERTY_PDA,
+      explorerUrl: `https://explorer.solana.com/tx/${row.TX_SIGNATURE}?cluster=devnet`,
+      transferCount: 0,
+    }));
+
     res.json({ 
       success: true, 
       count: properties.length,
@@ -38,51 +61,51 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/properties/register - Register new property
-router.post('/register', async (req, res) => {
+router.post('/register', requireAuth, upload.single("deed"), async (req, res) => {
   try {
-    const { propertyId, address, ownerId, ownerName, deedHash, salePrice } = req.body;
+    const propertyAddress = req.body.property_address || req.body.address || "";
+    const ownerName = req.body.owner_name || req.body.ownerName || "";
 
-    // Validate required fields
-    if (!propertyId || !address || !ownerId || !ownerName || !deedHash || !salePrice) {
+    if (!propertyAddress || !ownerName || !req.file) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields'
+        error: 'Missing deed file, property address, or owner name'
       });
     }
 
+    const deedHash = hashFile(req.file.buffer);
+    const propertyId = crypto.randomUUID();
+    const ownerId = req.user.sub || req.user.email;
+    const salePrice = 0;
+
     console.log('Registering property:', propertyId);
 
-    // 1. Register on Solana blockchain
-    const blockchainResult = await solanaService.registerProperty({
+    const fraudAnalysis = await geminiService.detectFraudRisk({
       propertyId,
-      address,
-      ownerId,
+      address: propertyAddress,
       ownerName,
-      deedHash,
-      salePrice: parseInt(salePrice)
+      salePrice
     });
 
-    // 2. Store in Snowflake for analytics
+    const blockchainResult = await solanaService.registerOnChain({
+      deedHash,
+      propertyAddress,
+      ownerName,
+      confidence: Math.max(0, 100 - Number(fraudAnalysis.riskScore || 0)),
+      fraudRisk: Number(fraudAnalysis.riskScore || 0)
+    });
+
     await snowflakeService.storePropertyRecord({
       propertyId,
-      address,
+      address: propertyAddress,
       ownerId,
       ownerName,
       deedHash,
-      salePrice: parseInt(salePrice),
-      transactionSignature: blockchainResult.transactionSignature,
+      salePrice,
+      transactionSignature: blockchainResult.txSig,
       timestamp: Date.now()
     });
 
-    // 3. Run AI fraud detection
-    const fraudAnalysis = await geminiService.detectFraudRisk({
-      propertyId,
-      address,
-      ownerName,
-      salePrice: parseInt(salePrice)
-    });
-
-    // 4. Store fraud analysis in Snowflake
     await snowflakeService.storeAIAnalysis(
       propertyId,
       'FRAUD_RISK',
@@ -90,10 +113,42 @@ router.post('/register', async (req, res) => {
       fraudAnalysis.riskScore
     );
 
+    await snowflakeService.insertPropertyAnalytics({
+      id: propertyId,
+      property_address: propertyAddress,
+      owner_name: ownerName,
+      deed_hash: deedHash,
+      gemini_confidence: Math.max(0, 100 - Number(fraudAnalysis.riskScore || 0)),
+      fraud_risk: Number(fraudAnalysis.riskScore || 0),
+      tx_signature: blockchainResult.txSig,
+      property_pda: blockchainResult.propertyPda,
+      notes: fraudAnalysis.analysis,
+      registered_by_provider: req.user.provider,
+      registered_by_provider_user_id: req.user.sub,
+      registered_by_email: req.user.email,
+      registered_by_name: req.user.name,
+    });
+
     res.json({
       success: true,
+      property: {
+        id: propertyId,
+        address: propertyAddress,
+        owner: ownerName,
+        confidenceScore: Math.max(0, 100 - Number(fraudAnalysis.riskScore || 0)),
+        fraudRisk:
+          Number(fraudAnalysis.riskScore || 0) >= 80
+            ? "High"
+            : Number(fraudAnalysis.riskScore || 0) >= 50
+              ? "Medium"
+              : "Low",
+        timestamp: new Date().toISOString(),
+        accountAddress: blockchainResult.propertyPda,
+        explorerUrl: blockchainResult.explorerUrl,
+        transferCount: 0
+      },
       blockchain: blockchainResult,
-      fraudAnalysis: fraudAnalysis,
+      fraudAnalysis,
       message: 'Property registered successfully'
     });
 

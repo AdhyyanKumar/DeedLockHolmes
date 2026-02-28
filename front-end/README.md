@@ -22,7 +22,7 @@ Open the local URL shown by Vite (usually `http://localhost:5173`).
 Create `front-end/.env` if you need a non-default backend URL:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:3001
+VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
 ## Build
