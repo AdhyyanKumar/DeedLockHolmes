@@ -20,6 +20,27 @@ function getGoogleRedirectUri(req) {
   );
 }
 
+function getCookieMode() {
+  const explicit = (process.env.COOKIE_SAME_SITE || "").trim().toLowerCase();
+  if (explicit === "none" || explicit === "lax" || explicit === "strict") {
+    return explicit;
+  }
+
+  const frontend = process.env.FRONTEND_URL || "";
+  const backend = process.env.BACKEND_PUBLIC_URL || "";
+  try {
+    if (frontend && backend) {
+      const frontendHost = new URL(frontend).host;
+      const backendHost = new URL(backend).host;
+      if (frontendHost !== backendHost) return "none";
+    }
+  } catch (_) {
+    // ignore parse errors and fall back to safe default
+  }
+
+  return "lax";
+}
+
 function base64UrlEncode(value) {
   return Buffer.from(value).toString("base64url");
 }
@@ -179,13 +200,16 @@ function readSession(req) {
 }
 
 function setSessionCookie(res, user) {
+  const sameSite = getCookieMode();
   const secure =
-    process.env.COOKIE_SECURE === "true" || process.env.NODE_ENV === "production";
+    process.env.COOKIE_SECURE === "true" ||
+    process.env.NODE_ENV === "production" ||
+    sameSite === "none";
   res.setHeader(
     "Set-Cookie",
     serializeCookie(SESSION_COOKIE_NAME, createSessionCookieValue(user), {
       httpOnly: true,
-      sameSite: "Lax",
+      sameSite: sameSite === "none" ? "None" : sameSite === "strict" ? "Strict" : "Lax",
       path: "/",
       secure,
       maxAge: Math.floor(SESSION_TTL_MS / 1000),
@@ -194,13 +218,16 @@ function setSessionCookie(res, user) {
 }
 
 function clearSessionCookie(res) {
+  const sameSite = getCookieMode();
   const secure =
-    process.env.COOKIE_SECURE === "true" || process.env.NODE_ENV === "production";
+    process.env.COOKIE_SECURE === "true" ||
+    process.env.NODE_ENV === "production" ||
+    sameSite === "none";
   res.setHeader(
     "Set-Cookie",
     serializeCookie(SESSION_COOKIE_NAME, "", {
       httpOnly: true,
-      sameSite: "Lax",
+      sameSite: sameSite === "none" ? "None" : sameSite === "strict" ? "Strict" : "Lax",
       path: "/",
       secure,
       maxAge: 0,

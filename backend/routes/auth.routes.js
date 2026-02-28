@@ -56,7 +56,7 @@ router.get("/google/callback", async (req, res) => {
     return res.redirect(`${getFrontendUrl()}${getSafeRedirectPath(verifiedState.redirectPath)}`);
   } catch (error) {
     console.error("OAuth callback error:", error);
-    return res.status(500).send(error.message);
+    return res.redirect(`${getFrontendUrl()}/login?auth=login&error=oauth_callback_failed`);
   }
 });
 

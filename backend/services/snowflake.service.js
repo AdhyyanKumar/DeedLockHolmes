@@ -6,6 +6,21 @@ class SnowflakeService {
     this.connection = null;
   }
 
+  isTerminatedConnectionError(error) {
+    const message = String(error?.message || "").toLowerCase();
+    return message.includes("terminated connection");
+  }
+
+  resetConnection() {
+    if (!this.connection) return;
+    try {
+      this.connection.destroy(() => {});
+    } catch (_) {
+      // no-op
+    }
+    this.connection = null;
+  }
+
   async connect() {
     if (this.connection) {
       return this.connection;
@@ -105,11 +120,7 @@ class SnowflakeService {
     }
   }
 
-  async executeQuery(sqlText, binds = []) {
-    if (!this.connection) {
-      await this.connect();
-    }
-
+  async executeWithCurrentConnection(sqlText, binds = []) {
     return new Promise((resolve, reject) => {
       this.connection.execute({
         sqlText,
@@ -125,6 +136,25 @@ class SnowflakeService {
         }
       });
     });
+  }
+
+  async executeQuery(sqlText, binds = []) {
+    if (!this.connection) {
+      await this.connect();
+    }
+
+    try {
+      return await this.executeWithCurrentConnection(sqlText, binds);
+    } catch (error) {
+      if (!this.isTerminatedConnectionError(error)) {
+        throw error;
+      }
+
+      console.warn("Snowflake connection terminated. Reconnecting and retrying query once...");
+      this.resetConnection();
+      await this.connect();
+      return this.executeWithCurrentConnection(sqlText, binds);
+    }
   }
 
   async storePropertyRecord(propertyData) {
