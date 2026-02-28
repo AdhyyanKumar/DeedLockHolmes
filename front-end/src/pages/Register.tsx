@@ -14,6 +14,8 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export default function RegisterPage() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [propertyAddress, setPropertyAddress] = useState("");
+  const [ownerName, setOwnerName] = useState("");
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [currentStep, setCurrentStep] = useState(1);
   const [result, setResult] = useState<Property | null>(null);
@@ -55,6 +57,12 @@ export default function RegisterPage() {
 
   async function onSubmit() {
     if (!file) return;
+    if (!propertyAddress.trim() || !ownerName.trim()) {
+      setError("Property address and owner name are required.");
+      return;
+    }
+
+    setError(null);
     setFlowState("progress");
     setCurrentStep(1);
     setResult(null);
@@ -66,7 +74,7 @@ export default function RegisterPage() {
       window.setTimeout(() => setCurrentStep(3), 2400),
     ];
 
-    const response = await registerProperty(file);
+    const response = await registerProperty(file, propertyAddress.trim(), ownerName.trim());
 
     if (response.status === "success" && response.data) {
       setCurrentStep(3);
@@ -127,8 +135,12 @@ export default function RegisterPage() {
             <UploadCard
               file={file}
               error={error}
+              propertyAddress={propertyAddress}
+              ownerName={ownerName}
               isSubmitting={false}
               isDragOver={isDragOver}
+              onPropertyAddressChange={setPropertyAddress}
+              onOwnerNameChange={setOwnerName}
               onDragOver={(event) => {
                 event.preventDefault();
                 setIsDragOver(true);

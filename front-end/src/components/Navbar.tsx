@@ -1,7 +1,7 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { UserCircle2 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { loginMock, signupMock } from "../api/authApi";
+import { beginOAuthLogin } from "../api/authApi";
 import { showToast } from "../utils/toast";
 import { useAuth } from "./AuthProvider";
 
@@ -21,7 +21,7 @@ function linkClass(isActive: boolean, isLanding: boolean) {
 type ModalMode = "login" | "signup" | null;
 
 export default function Navbar() {
-  const { isAuthenticated, user, logout, setUser } = useAuth();
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isHeroRoute =
@@ -31,9 +31,6 @@ export default function Navbar() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const authParam = new URLSearchParams(location.search).get("auth");
 
@@ -51,32 +48,9 @@ export default function Navbar() {
     }
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!email || !password) return;
-
+  async function onContinueWithGoogle() {
     setLoading(true);
-    if (modalMode === "signup") {
-      if (!name) {
-        setLoading(false);
-        return;
-      }
-      const created = await signupMock(name, email);
-      setUser(created);
-      showToast(`Account created for ${created.name}`);
-    } else {
-      const logged = await loginMock(email);
-      setUser(logged);
-      showToast(`Welcome back, ${logged.name}`);
-    }
-
-    setLoading(false);
-    setModalMode(null);
-    setMenuOpen(false);
-    setName("");
-    setEmail("");
-    setPassword("");
-    navigate("/register");
+    beginOAuthLogin("/register");
   }
 
   return (
@@ -158,7 +132,7 @@ export default function Navbar() {
                     : "border-line bg-white text-ink",
                 ].join(" ")}
               >
-                {isAuthenticated ? (
+                {isLoading ? null : isAuthenticated ? (
                   <div className="space-y-2">
                     <p className={isHeroRoute ? "text-sm text-emerald-100" : "text-sm text-slate-600"}>
                       {user?.name}
@@ -168,8 +142,8 @@ export default function Navbar() {
                     </p>
                     <button
                       type="button"
-                      onClick={() => {
-                        logout();
+                      onClick={async () => {
+                        await logout();
                         setMenuOpen(false);
                         showToast("Logged out");
                       }}
@@ -186,7 +160,7 @@ export default function Navbar() {
                 ) : (
                   <div className="space-y-2">
                     <p className={isHeroRoute ? "text-sm text-emerald-100" : "text-sm text-slate-600"}>
-                      Account
+                      Google OAuth
                     </p>
                     <button
                       type="button"
@@ -201,7 +175,7 @@ export default function Navbar() {
                           : "bg-brand text-white hover:bg-[#e85d00]",
                       ].join(" ")}
                     >
-                      Login
+                      Continue
                     </button>
                     <button
                       type="button"
@@ -216,7 +190,7 @@ export default function Navbar() {
                           : "border-line text-slate-700 hover:bg-slate-50",
                       ].join(" ")}
                     >
-                      Sign Up
+                      Learn More
                     </button>
                   </div>
                 )}
@@ -228,48 +202,14 @@ export default function Navbar() {
 
       {modalMode ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#061E17]/70 px-4 backdrop-blur-sm">
-          <form
-            onSubmit={onSubmit}
-            className="w-full max-w-md rounded-2xl border border-emerald-200/35 bg-[#114637]/92 p-6 text-emerald-50 shadow-card"
-          >
+          <div className="w-full max-w-md rounded-2xl border border-emerald-200/35 bg-[#114637]/92 p-6 text-emerald-50 shadow-card">
             <h2 className="text-xl font-semibold text-white">
               {modalMode === "signup" ? "Create Account" : "Login"}
             </h2>
-            <p className="mt-1 text-sm text-emerald-100/80">Mock auth for MVP frontend demo.</p>
-
-            {modalMode === "signup" ? (
-              <label className="mt-4 block text-sm text-emerald-100">
-                Full Name
-                <input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-emerald-200/35 bg-[#0A2E23]/60 px-3 py-2.5 text-sm text-emerald-50 outline-none placeholder:text-emerald-200/55"
-                  placeholder="Alex Morgan"
-                />
-              </label>
-            ) : null}
-
-            <label className="mt-4 block text-sm text-emerald-100">
-              Email
-              <input
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-emerald-200/35 bg-[#0A2E23]/60 px-3 py-2.5 text-sm text-emerald-50 outline-none placeholder:text-emerald-200/55"
-                placeholder="you@company.com"
-                type="email"
-              />
-            </label>
-
-            <label className="mt-4 block text-sm text-emerald-100">
-              Password
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-emerald-200/35 bg-[#0A2E23]/60 px-3 py-2.5 text-sm text-emerald-50 outline-none placeholder:text-emerald-200/55"
-                placeholder="********"
-                type="password"
-              />
-            </label>
+            <p className="mt-1 text-sm text-emerald-100/80">
+              Authenticate with Google. The backend exchanges the authorization code,
+              stores the user profile in Snowflake, and creates a secure session cookie.
+            </p>
 
             <div className="mt-6 flex gap-2">
               <button
@@ -280,14 +220,15 @@ export default function Navbar() {
                 Cancel
               </button>
               <button
-                type="submit"
-                disabled={!email || !password || (modalMode === "signup" && !name) || loading}
+                type="button"
+                onClick={onContinueWithGoogle}
+                disabled={loading}
                 className="w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#0F3B2E] hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Please wait..." : modalMode === "signup" ? "Sign Up" : "Login"}
+                {loading ? "Redirecting..." : "Continue with Google"}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       ) : null}
     </>

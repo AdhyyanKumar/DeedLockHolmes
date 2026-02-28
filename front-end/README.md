@@ -19,6 +19,12 @@ npm run dev
 
 Open the local URL shown by Vite (usually `http://localhost:5173`).
 
+Create `front-end/.env` if you need a non-default backend URL:
+
+```bash
+VITE_API_BASE_URL=http://localhost:3001
+```
+
 ## Build
 
 ```bash
@@ -29,24 +35,23 @@ npm run preview
 ## Quick Walkthrough
 
 1. Go to `/` to view the landing page.
-2. Use `/login` or `/signup` for mock authentication.
-3. After login, access `/register` to upload a PDF deed (max 10MB).
-4. Click **Validate & Register** to run a 3-step animated registry flow.
+2. Use `/login` or `/signup` to start Google OAuth.
+3. After login, access `/register`, enter the property address and owner name, and upload a PDF deed (max 10MB).
+4. Click **Validate & Register** to run the backend verification and registration flow.
 5. If approved, see the verification summary with confidence score, fraud risk, timestamp, and on-chain account.
-6. Use **View on Explorer** to open a placeholder explorer URL.
-7. Visit `/dashboard` to browse registered properties.
+6. Use **View on Explorer** to open the Solana explorer transaction.
+7. Visit `/dashboard` to browse properties loaded from the backend.
 8. Use search, fraud risk filter, and sorting controls.
 9. Copied account addresses show a **Copied** toast.
 
-## Mock API / Persistence
+## API / Persistence
 
-- Mock API lives in `src/api/propertyApi.ts`.
-- `registerProperty(file)` simulates validation and either:
-  - stores a successful property in `localStorage`, or
-  - returns a rejection reason.
-- `getAllProperties()` returns persisted records from `localStorage`.
+- Auth uses Google OAuth through the backend.
+- `registerProperty(file, propertyAddress, ownerName)` uploads the deed to the backend.
+- `getAllProperties()` reads persisted property analytics from the backend.
+- The backend stores auth users, auth events, and property analytics in Snowflake.
 
-Storage key: `deedlock_holmes_properties_v1`
+Backend env vars are documented in [`.env.example`](/Users/anshmathur/Deedlock Holmes/DeedLockHolmes/backend/.env.example).
 
 ## Structure
 

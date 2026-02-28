@@ -2,29 +2,52 @@ import {
   createContext,
   type PropsWithChildren,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
-import { type MockUser, getStoredUser, logoutMock } from "../api/authApi";
+import { type AuthUser, getCurrentUser, logoutUser } from "../api/authApi";
 
 interface AuthContextValue {
-  user: MockUser | null;
-  setUser: (user: MockUser | null) => void;
-  logout: () => void;
+  user: AuthUser | null;
+  setUser: (user: AuthUser | null) => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [user, setUserState] = useState<MockUser | null>(() => getStoredUser());
+  const [user, setUserState] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  function setUser(nextUser: MockUser | null) {
+  useEffect(() => {
+    let active = true;
+
+    getCurrentUser()
+      .then((nextUser) => {
+        if (active) {
+          setUserState(nextUser);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function setUser(nextUser: AuthUser | null) {
     setUserState(nextUser);
   }
 
-  function logout() {
-    logoutMock();
+  async function logout() {
+    await logoutUser();
     setUserState(null);
   }
 
@@ -34,8 +57,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setUser,
       logout,
       isAuthenticated: Boolean(user),
+      isLoading,
     }),
-    [user],
+    [isLoading, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
