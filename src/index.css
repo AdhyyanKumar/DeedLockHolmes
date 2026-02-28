@@ -90,12 +90,12 @@ a {
 
 .scene-layer-far {
   bottom: 34%;
-  opacity: 0.35;
+  opacity: 0.68;
 }
 
 .scene-layer-near {
-  bottom: 18%;
-  opacity: 0.62;
+  bottom: 30%;
+  opacity: 0.94;
 }
 
 .scene-strip {
@@ -113,68 +113,117 @@ a {
 
 .scene-house {
   position: relative;
-  border-radius: 0.45rem;
-  background: rgba(236, 253, 245, 0.72);
+  display: block;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35));
 }
 
-.scene-house::before {
-  content: "";
+.scene-house-roof {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-bottom: 12px solid rgba(236, 253, 245, 0.72);
-  top: -11px;
+  top: -21%;
+  width: 85%;
+  height: 34%;
+  background: linear-gradient(180deg, #8f2727 0%, #6a1d1d 100%);
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  border-radius: 3px;
+}
+
+.scene-house-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 13%;
+  border-radius: 6px 6px 4px 4px;
+  background: linear-gradient(180deg, #f3ead0 0%, #ddd0ad 100%);
+  border: 1px solid rgba(62, 72, 84, 0.22);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.scene-window {
+  position: absolute;
+  width: 18%;
+  aspect-ratio: 1 / 1;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #9ad8ea 0%, #6eb2c8 100%);
+  border: 1px solid rgba(48, 80, 98, 0.55);
+}
+
+.scene-window-left {
+  left: 12%;
+  bottom: 30%;
+}
+
+.scene-window-right {
+  right: 12%;
+  bottom: 30%;
+}
+
+.scene-window-top {
+  left: 41%;
+  bottom: 54%;
+}
+
+.scene-door {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 20%;
+  height: 34%;
+  border-radius: 5px 5px 3px 3px;
+  background: linear-gradient(180deg, #7f644b 0%, #5e4938 100%);
+  border: 1px solid rgba(48, 37, 28, 0.5);
 }
 
 .scene-house-far {
-  width: 34px;
-  height: 26px;
+  width: 52px;
+  height: 40px;
 }
 
 .scene-house-near {
-  width: 54px;
-  height: 42px;
+  width: 92px;
+  height: 70px;
 }
 
 .scene-tree {
-  border-radius: 999px;
-  background: rgba(167, 243, 208, 0.9);
   position: relative;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
 
-.scene-tree::after {
-  content: "";
+.scene-tree-canopy {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(20, 83, 45, 0.65);
-  border-radius: 1px;
+  bottom: 22%;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #66be72 0%, #3f9258 100%);
+  clip-path: polygon(50% 0%, 86% 20%, 100% 48%, 82% 84%, 50% 100%, 18% 84%, 0% 48%, 14% 20%);
+}
+
+.scene-tree-trunk {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 14%;
+  height: 32%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #6a5139 0%, #4f3b2b 100%);
 }
 
 .scene-tree-far {
-  width: 7px;
-  height: 7px;
-}
-
-.scene-tree-far::after {
-  width: 2px;
-  height: 7px;
-  bottom: -6px;
+  width: 30px;
+  height: 40px;
 }
 
 .scene-tree-near {
-  width: 10px;
-  height: 10px;
-}
-
-.scene-tree-near::after {
-  width: 2px;
-  height: 10px;
-  bottom: -9px;
+  width: 46px;
+  height: 66px;
 }
 
 .scene-road {
@@ -204,20 +253,21 @@ a {
 
 .scene-car {
   position: absolute;
-  left: -14%;
+  left: 50%;
   bottom: 14%;
-  width: 78px;
-  height: 38px;
+  transform: translateX(-50%);
+  width: 92px;
+  height: 40px;
 }
 
 .scene-car-top {
   position: absolute;
-  left: 20px;
-  top: 4px;
-  width: 35px;
+  left: 26px;
+  top: 6px;
+  width: 40px;
   height: 12px;
-  border-radius: 10px 10px 4px 4px;
-  background: rgba(255, 255, 255, 0.84);
+  border-radius: 12px 12px 3px 3px;
+  background: linear-gradient(180deg, #f2f5f8 0%, #dbe6ef 100%);
 }
 
 .scene-car-body {
@@ -225,38 +275,40 @@ a {
   left: 0;
   right: 0;
   bottom: 8px;
-  height: 21px;
-  border-radius: 10px 12px 8px 8px;
-  background: rgba(255, 255, 255, 0.92);
+  height: 22px;
+  border-radius: 12px 14px 9px 9px;
+  background: linear-gradient(90deg, #f0f3f8 0%, #d7e0e9 52%, #c4d1dd 100%);
+  border: 1px solid rgba(38, 60, 78, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 .scene-car-window {
   position: absolute;
-  left: 28px;
-  top: 4px;
-  width: 20px;
+  left: 31px;
+  top: 3px;
+  width: 26px;
   height: 9px;
-  border-radius: 4px;
-  background: rgba(15, 59, 46, 0.45);
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(31, 51, 70, 0.9), rgba(18, 32, 46, 0.85));
 }
 
 .scene-wheel {
   position: absolute;
   bottom: 0;
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
   border-radius: 999px;
-  background: rgba(6, 78, 59, 0.9);
-  border: 2px solid rgba(236, 253, 245, 0.75);
+  background: #1e2938;
+  border: 2px solid rgba(187, 203, 218, 0.8);
   animation: wheel-spin 1s linear infinite;
 }
 
 .scene-wheel-left {
-  left: 12px;
+  left: 14px;
 }
 
 .scene-wheel-right {
-  right: 12px;
+  right: 14px;
 }
 
 .scene-stars {
