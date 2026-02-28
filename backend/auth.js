@@ -13,7 +13,11 @@ function getFrontendUrl() {
 }
 
 function getGoogleRedirectUri(req) {
-  return process.env.GOOGLE_REDIRECT_URI || `${getBaseUrl(req)}/api/auth/google/callback`;
+  return (
+    process.env.GOOGLE_REDIRECT_URI ||
+    process.env.GOOGLE_CALLBACK_URI ||
+    `${getBaseUrl(req)}/api/auth/google/callback`
+  );
 }
 
 function base64UrlEncode(value) {
