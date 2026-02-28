@@ -1,0 +1,22 @@
+[toolchain]
+package_manager = "npm"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.devnet]
+property_registry = "5GGuCnwt8Lk3c9ZJMKLjQYAuD5wwihP73RKNuEFmTB7G"
+
+[programs.localnet]
+property_registry = "5GGuCnwt8Lk3c9ZJMKLjQYAuD5wwihP73RKNuEFmTB7G"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npx ts-mocha -p ./tsconfig.json -t 1000000 \"tests/**/*.ts\""
