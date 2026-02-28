@@ -17,12 +17,12 @@ npm install
 npm run dev
 ```
 
-Open the local URL shown by Vite (usually `http://localhost:5173`).
+Open the deployed app at `https://deed-lock-holmes.vercel.app` or your local Vite URL when developing.
 
 Create `front-end/.env` if you need a non-default backend URL:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:5000/api
+VITE_API_BASE_URL=https://deed-lock-holmes.vercel.app/api
 ```
 
 ## Build

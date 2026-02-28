@@ -9,7 +9,7 @@ function getBaseUrl(req) {
 }
 
 function getFrontendUrl() {
-  return process.env.FRONTEND_URL || "http://localhost:5173";
+  return process.env.FRONTEND_URL || "https://deed-lock-holmes.vercel.app";
 }
 
 function getGoogleRedirectUri(req) {
