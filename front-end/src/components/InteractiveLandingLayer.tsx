@@ -78,8 +78,8 @@ export default function InteractiveLandingLayer() {
         <div className="neighborhood-scene">
           <motion.div
             className="scene-layer scene-layer-near"
-            animate={{ x: ["0%", "-38%"] }}
-            transition={{ duration: 17, repeat: Infinity, ease: "linear" }}
+            animate={{ x: ["0%", "-33.4%"] }}
+            transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
           >
             <div className="scene-strip">
               {Array.from({ length: 12 }).map((_, idx) => (
