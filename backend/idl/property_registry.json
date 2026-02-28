@@ -1,0 +1,166 @@
+{
+  "address": "5GGuCnwt8Lk3c9ZJMKLjQYAuD5wwihP73RKNuEFmTB7G",
+  "metadata": {
+    "name": "property_registry",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "register_property",
+      "discriminator": [
+        25,
+        115,
+        131,
+        71,
+        59,
+        22,
+        25,
+        16
+      ],
+      "accounts": [
+        {
+          "name": "property",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  101,
+                  114,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "arg",
+                "path": "deed_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "property_address",
+          "type": "string"
+        },
+        {
+          "name": "owner_name",
+          "type": "string"
+        },
+        {
+          "name": "deed_hash",
+          "type": "string"
+        },
+        {
+          "name": "gemini_confidence",
+          "type": "u8"
+        },
+        {
+          "name": "fraud_risk",
+          "type": "u8"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Property",
+      "discriminator": [
+        195,
+        247,
+        69,
+        181,
+        195,
+        47,
+        152,
+        19
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidDeedHash",
+      "msg": "Deed hash must be exactly 64 hex characters."
+    },
+    {
+      "code": 6001,
+      "name": "InvalidConfidence",
+      "msg": "Gemini confidence must be between 0 and 100."
+    },
+    {
+      "code": 6002,
+      "name": "InvalidFraudRisk",
+      "msg": "Fraud risk must be between 0 and 100."
+    },
+    {
+      "code": 6003,
+      "name": "AddressTooLong",
+      "msg": "Property address exceeds maximum length."
+    },
+    {
+      "code": 6004,
+      "name": "OwnerNameTooLong",
+      "msg": "Owner name exceeds maximum length."
+    }
+  ],
+  "types": [
+    {
+      "name": "Property",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "property_address",
+            "type": "string"
+          },
+          {
+            "name": "owner_name",
+            "type": "string"
+          },
+          {
+            "name": "deed_hash",
+            "type": "string"
+          },
+          {
+            "name": "gemini_confidence",
+            "type": "u8"
+          },
+          {
+            "name": "fraud_risk",
+            "type": "u8"
+          },
+          {
+            "name": "registered_at",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}
