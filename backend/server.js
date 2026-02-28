@@ -119,12 +119,16 @@ app.listen(PORT, async () => {
     console.error('✗ Solana connection failed:', error.message);
   }
 
-  // Test Snowflake connection
-  try {
-    await snowflakeService.connect();
-    console.log('✓ Snowflake connected');
-  } catch (error) {
-    console.error('✗ Snowflake connection failed:', error.message);
+  // Test Snowflake connection (optional unless explicitly required)
+  if (process.env.SNOWFLAKE_REQUIRED === "true") {
+    try {
+      await snowflakeService.connect();
+      console.log("Snowflake connected");
+    } catch (error) {
+      console.error("Snowflake connection failed:", error.message);
+    }
+  } else {
+    console.log("Snowflake optional mode enabled (set SNOWFLAKE_REQUIRED=true to enforce).");
   }
 
   console.log('\n✅ Backend ready!\n');
@@ -136,3 +140,4 @@ process.on('SIGINT', () => {
   snowflakeService.disconnect();
   process.exit(0);
 });
+

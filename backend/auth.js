@@ -17,7 +17,7 @@ function getGoogleRedirectUri(req) {
     process.env.GOOGLE_REDIRECT_URI ||
     process.env.GOOGLE_CALLBACK_URI ||
     `${getBaseUrl(req)}/api/auth/google/callback`
-  );
+  ).trim();
 }
 
 function getCookieMode() {
@@ -112,6 +112,7 @@ function verifySignedPayload(token) {
 }
 
 function buildGoogleAuthUrl(req, redirectPath = "/register") {
+  const clientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
   const state = createSignedPayload(
     {
       redirectPath,
@@ -122,7 +123,7 @@ function buildGoogleAuthUrl(req, redirectPath = "/register") {
   );
 
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID || "",
+    client_id: clientId,
     redirect_uri: getGoogleRedirectUri(req),
     response_type: "code",
     scope: "openid email profile",
@@ -135,11 +136,23 @@ function buildGoogleAuthUrl(req, redirectPath = "/register") {
 }
 
 async function exchangeCodeForTokens(req, code) {
+  const clientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
+  const clientSecret = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
+  const redirectUri = getGoogleRedirectUri(req);
+  console.log(
+    "Google token exchange request:",
+    JSON.stringify({
+      redirectUri,
+      clientIdPrefix: clientId.slice(0, 12),
+      clientIdSuffix: clientId.slice(-8),
+      codeLength: String(code || "").length,
+    }),
+  );
   const body = new URLSearchParams({
     code,
-    client_id: process.env.GOOGLE_CLIENT_ID || "",
-    client_secret: process.env.GOOGLE_CLIENT_SECRET || "",
-    redirect_uri: getGoogleRedirectUri(req),
+    client_id: clientId,
+    client_secret: clientSecret,
+    redirect_uri: redirectUri,
     grant_type: "authorization_code",
   });
 
@@ -150,7 +163,9 @@ async function exchangeCodeForTokens(req, code) {
   });
 
   if (!response.ok) {
-    throw new Error(`Google token exchange failed with ${response.status}`);
+    const errorText = await response.text();
+    console.error("Google token exchange error payload:", errorText);
+    throw new Error(`Google token exchange failed with ${response.status}: ${errorText}`);
   }
 
   return response.json();

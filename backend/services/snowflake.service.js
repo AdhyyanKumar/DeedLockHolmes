@@ -5,11 +5,31 @@ class SnowflakeService {
   constructor() {
     this.connection = null;
     this.connectPromise = null;
+    this.unavailableUntil = 0;
+    this.optional = process.env.SNOWFLAKE_REQUIRED !== "true";
   }
 
   isTerminatedConnectionError(error) {
     const message = String(error?.message || "").toLowerCase();
     return message.includes("terminated connection");
+  }
+
+  isTransientNetworkError(error) {
+    const message = String(error?.message || "").toLowerCase();
+    return (
+      message.includes("network error") ||
+      message.includes("could not reach snowflake") ||
+      message.includes("terminated connection") ||
+      message.includes("timed out")
+    );
+  }
+
+  isInCooldown() {
+    return Date.now() < this.unavailableUntil;
+  }
+
+  enterCooldown(ms = 60_000) {
+    this.unavailableUntil = Date.now() + ms;
   }
 
   resetConnection() {
@@ -26,6 +46,10 @@ class SnowflakeService {
   async connect() {
     if (this.connection) {
       return this.connection;
+    }
+
+    if (this.optional && this.isInCooldown()) {
+      throw new Error("Snowflake temporarily unavailable (cooldown)");
     }
 
     if (this.connectPromise) {
@@ -49,6 +73,9 @@ class SnowflakeService {
         if (err) {
           console.error("Unable to connect to Snowflake:", err.message);
           this.connection = null;
+          if (this.optional && this.isTransientNetworkError(err)) {
+            this.enterCooldown();
+          }
           reject(err);
         } else {
           console.log("Successfully connected to Snowflake");
@@ -153,20 +180,43 @@ class SnowflakeService {
 
   async executeQuery(sqlText, binds = []) {
     if (!this.connection) {
-      await this.connect();
+      try {
+        await this.connect();
+      } catch (error) {
+        if (this.optional) {
+          console.warn(`Snowflake skipped (connect): ${error.message}`);
+          return [];
+        }
+        throw error;
+      }
     }
 
     try {
       return await this.executeWithCurrentConnection(sqlText, binds);
     } catch (error) {
-      if (!this.isTerminatedConnectionError(error)) {
+      if (!this.isTerminatedConnectionError(error) && !this.isTransientNetworkError(error)) {
+        if (this.optional) {
+          console.warn(`Snowflake skipped (query): ${error.message}`);
+          return [];
+        }
         throw error;
       }
 
       console.warn("Snowflake connection terminated. Reconnecting and retrying query once...");
       this.resetConnection();
-      await this.connect();
-      return this.executeWithCurrentConnection(sqlText, binds);
+      if (this.optional) {
+        this.enterCooldown();
+      }
+      try {
+        await this.connect();
+        return this.executeWithCurrentConnection(sqlText, binds);
+      } catch (retryError) {
+        if (this.optional) {
+          console.warn(`Snowflake skipped (retry): ${retryError.message}`);
+          return [];
+        }
+        throw retryError;
+      }
     }
   }
 
