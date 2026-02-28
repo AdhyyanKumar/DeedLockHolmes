@@ -34,26 +34,30 @@ router.get("/google/callback", async (req, res) => {
     const tokens = await exchangeCodeForTokens(req, String(code));
     const profile = await fetchGoogleProfile(tokens.access_token);
 
-    // Auth should not fail if analytics storage is temporarily unavailable.
-    try {
-      await snowflakeService.upsertAuthUser(profile);
-      await snowflakeService.insertAuthEvent({
-        id: crypto.randomUUID(),
-        provider: profile.provider,
-        provider_user_id: profile.provider_user_id,
-        email: profile.email,
-        name: profile.name,
-        event_type: "login",
-        redirect_path: verifiedState.redirectPath,
-        ip_address: req.ip,
-        user_agent: req.get("user-agent") || "",
-      });
-    } catch (snowflakeError) {
-      console.error("Auth logging failed (continuing login):", snowflakeError.message);
-    }
-
     setSessionCookie(res, profile);
-    return res.redirect(`${getFrontendUrl()}${getSafeRedirectPath(verifiedState.redirectPath)}`);
+    const redirectTarget = `${getFrontendUrl()}${getSafeRedirectPath(verifiedState.redirectPath)}`;
+    res.redirect(redirectTarget);
+
+    // Fire-and-forget analytics logging so auth redirect is never blocked by Snowflake.
+    void (async () => {
+      try {
+        await snowflakeService.upsertAuthUser(profile);
+        await snowflakeService.insertAuthEvent({
+          id: crypto.randomUUID(),
+          provider: profile.provider,
+          provider_user_id: profile.provider_user_id,
+          email: profile.email,
+          name: profile.name,
+          event_type: "login",
+          redirect_path: verifiedState.redirectPath,
+          ip_address: req.ip,
+          user_agent: req.get("user-agent") || "",
+        });
+      } catch (snowflakeError) {
+        console.error("Auth logging failed (non-blocking):", snowflakeError.message);
+      }
+    })();
+    return;
   } catch (error) {
     console.error("OAuth callback error:", error);
     return res.redirect(`${getFrontendUrl()}/login?auth=login&error=oauth_callback_failed`);
