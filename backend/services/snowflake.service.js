@@ -4,6 +4,7 @@ require("dotenv").config();
 class SnowflakeService {
   constructor() {
     this.connection = null;
+    this.connectPromise = null;
   }
 
   isTerminatedConnectionError(error) {
@@ -19,6 +20,7 @@ class SnowflakeService {
       // no-op
     }
     this.connection = null;
+    this.connectPromise = null;
   }
 
   async connect() {
@@ -26,7 +28,11 @@ class SnowflakeService {
       return this.connection;
     }
 
-    return new Promise((resolve, reject) => {
+    if (this.connectPromise) {
+      return this.connectPromise;
+    }
+
+    this.connectPromise = new Promise((resolve, reject) => {
       console.log("Connecting to Snowflake...");
 
       this.connection = snowflake.createConnection({
@@ -42,6 +48,7 @@ class SnowflakeService {
       this.connection.connect((err, conn) => {
         if (err) {
           console.error("Unable to connect to Snowflake:", err.message);
+          this.connection = null;
           reject(err);
         } else {
           console.log("Successfully connected to Snowflake");
@@ -56,6 +63,12 @@ class SnowflakeService {
         }
       });
     });
+
+    try {
+      return await this.connectPromise;
+    } finally {
+      this.connectPromise = null;
+    }
   }
 
   async ensureSchema() {
