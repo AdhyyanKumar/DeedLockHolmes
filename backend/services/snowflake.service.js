@@ -1,496 +1,240 @@
-const snowflake = require("snowflake-sdk");
+const { MongoClient } = require("mongodb");
 require("dotenv").config();
 
 class SnowflakeService {
   constructor() {
+    this.client = null;
     this.connection = null;
+    this.db = null;
     this.connectPromise = null;
-    this.unavailableUntil = 0;
-    this.optional = process.env.SNOWFLAKE_REQUIRED !== "true";
-  }
-
-  isTerminatedConnectionError(error) {
-    const message = String(error?.message || "").toLowerCase();
-    return message.includes("terminated connection");
-  }
-
-  isTransientNetworkError(error) {
-    const message = String(error?.message || "").toLowerCase();
-    return (
-      message.includes("network error") ||
-      message.includes("could not reach snowflake") ||
-      message.includes("terminated connection") ||
-      message.includes("timed out")
-    );
-  }
-
-  isInCooldown() {
-    return Date.now() < this.unavailableUntil;
-  }
-
-  enterCooldown(ms = 60_000) {
-    this.unavailableUntil = Date.now() + ms;
-  }
-
-  resetConnection() {
-    if (!this.connection) return;
-    try {
-      this.connection.destroy(() => {});
-    } catch (_) {
-      // no-op
-    }
-    this.connection = null;
-    this.connectPromise = null;
+    this.optional = process.env.MONGODB_REQUIRED !== "true";
   }
 
   async connect() {
-    if (this.connection) {
-      return this.connection;
+    if (this.db) return this.db;
+    if (this.connectPromise) return this.connectPromise;
+
+    const uri = process.env.MONGODB_URI || "";
+    const dbName = process.env.MONGODB_DB_NAME || "deedlock_holmes";
+
+    if (!uri) {
+      const error = new Error("Missing MONGODB_URI");
+      if (this.optional) {
+        console.warn(`MongoDB optional mode: ${error.message}`);
+        return null;
+      }
+      throw error;
     }
 
-    if (this.optional && this.isInCooldown()) {
-      throw new Error("Snowflake temporarily unavailable (cooldown)");
-    }
-
-    if (this.connectPromise) {
-      return this.connectPromise;
-    }
-
-    this.connectPromise = new Promise((resolve, reject) => {
-      console.log("Connecting to Snowflake...");
-
-      this.connection = snowflake.createConnection({
-        account: process.env.SNOWFLAKE_ACCOUNT || process.env.SF_ACCOUNT,
-        username: process.env.SNOWFLAKE_USERNAME || process.env.SF_USER,
-        password: process.env.SNOWFLAKE_PASSWORD || process.env.SF_PASSWORD,
-        database: process.env.SNOWFLAKE_DATABASE || process.env.SF_DATABASE,
-        schema: process.env.SNOWFLAKE_SCHEMA || process.env.SF_SCHEMA,
-        warehouse: process.env.SNOWFLAKE_WAREHOUSE || process.env.SF_WAREHOUSE,
-        role: process.env.SNOWFLAKE_ROLE || process.env.SF_ROLE
+    this.connectPromise = (async () => {
+      this.client = new MongoClient(uri, {
+        maxPoolSize: 10,
       });
+      await this.client.connect();
+      this.db = this.client.db(dbName);
+      this.connection = this.db;
+      console.log(`Connected to MongoDB (${dbName})`);
 
-      this.connection.connect((err, conn) => {
-        if (err) {
-          console.error("Unable to connect to Snowflake:", err.message);
-          this.connection = null;
-          if (this.optional && this.isTransientNetworkError(err)) {
-            this.enterCooldown();
-          }
-          reject(err);
-        } else {
-          console.log("Successfully connected to Snowflake");
-          console.log(
-            "Database:",
-            process.env.SNOWFLAKE_DATABASE || process.env.SF_DATABASE
-          );
-          console.log("Schema:", process.env.SNOWFLAKE_SCHEMA || process.env.SF_SCHEMA);
-          this.ensureSchema()
-            .then(() => resolve(conn))
-            .catch(reject);
-        }
-      });
-    });
+      await Promise.all([
+        this.db.collection("auth_users").createIndex({ provider: 1, provider_user_id: 1 }, { unique: true }),
+        this.db.collection("auth_events").createIndex({ created_at: -1 }),
+        this.db.collection("property_analytics").createIndex({ created_at: -1 }),
+        this.db.collection("property_records").createIndex({ property_id: 1, created_at: -1 }),
+        this.db.collection("verification_logs").createIndex({ property_id: 1, created_at: -1 }),
+      ]);
+
+      return this.db;
+    })();
 
     try {
       return await this.connectPromise;
+    } catch (error) {
+      this.client = null;
+      this.db = null;
+      this.connection = null;
+      if (this.optional) {
+        console.warn(`MongoDB optional mode: ${error.message}`);
+        return null;
+      }
+      throw error;
     } finally {
       this.connectPromise = null;
     }
   }
 
-  async ensureSchema() {
-    const statements = [
-      `
-        CREATE TABLE IF NOT EXISTS AUTH_USERS (
-          provider STRING,
-          provider_user_id STRING,
-          email STRING,
-          name STRING,
-          given_name STRING,
-          family_name STRING,
-          picture STRING,
-          email_verified BOOLEAN,
-          last_login_at TIMESTAMP_NTZ,
-          created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
-        )
-      `,
-      `
-        CREATE TABLE IF NOT EXISTS AUTH_EVENTS (
-          id STRING,
-          provider STRING,
-          provider_user_id STRING,
-          email STRING,
-          name STRING,
-          event_type STRING,
-          redirect_path STRING,
-          ip_address STRING,
-          user_agent STRING,
-          created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
-        )
-      `,
-      `
-        CREATE TABLE IF NOT EXISTS PROPERTY_ANALYTICS (
-          id STRING,
-          property_address STRING,
-          owner_name STRING,
-          deed_hash STRING,
-          gemini_confidence FLOAT,
-          fraud_risk FLOAT,
-          tx_signature STRING,
-          property_pda STRING,
-          notes STRING,
-          registered_by_provider STRING,
-          registered_by_provider_user_id STRING,
-          registered_by_email STRING,
-          registered_by_name STRING,
-          created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
-        )
-      `,
-      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS property_pda STRING",
-      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS notes STRING",
-      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS registered_by_provider STRING",
-      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS registered_by_provider_user_id STRING",
-      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS registered_by_email STRING",
-      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS registered_by_name STRING",
-      "ALTER TABLE PROPERTY_ANALYTICS ADD COLUMN IF NOT EXISTS created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()",
-    ];
-
-    for (const statement of statements) {
-      await this.executeQuery(statement);
-    }
-  }
-
-  async executeWithCurrentConnection(sqlText, binds = []) {
-    return new Promise((resolve, reject) => {
-      this.connection.execute({
-        sqlText,
-        binds,
-        complete: (err, stmt, rows) => {
-          if (err) {
-            console.error("Query execution failed:", err.message);
-            reject(err);
-          } else {
-            console.log(`Query executed: ${rows?.length || 0} rows returned`);
-            resolve(rows || []);
-          }
-        }
-      });
-    });
-  }
-
-  async executeQuery(sqlText, binds = []) {
-    if (!this.connection) {
-      try {
-        await this.connect();
-      } catch (error) {
-        if (this.optional) {
-          console.warn(`Snowflake skipped (connect): ${error.message}`);
-          return [];
-        }
-        throw error;
-      }
-    }
-
-    try {
-      return await this.executeWithCurrentConnection(sqlText, binds);
-    } catch (error) {
-      if (!this.isTerminatedConnectionError(error) && !this.isTransientNetworkError(error)) {
-        if (this.optional) {
-          console.warn(`Snowflake skipped (query): ${error.message}`);
-          return [];
-        }
-        throw error;
-      }
-
-      console.warn("Snowflake connection terminated. Reconnecting and retrying query once...");
-      this.resetConnection();
-      if (this.optional) {
-        this.enterCooldown();
-      }
-      try {
-        await this.connect();
-        return this.executeWithCurrentConnection(sqlText, binds);
-      } catch (retryError) {
-        if (this.optional) {
-          console.warn(`Snowflake skipped (retry): ${retryError.message}`);
-          return [];
-        }
-        throw retryError;
-      }
-    }
-  }
-
-  async storePropertyRecord(propertyData) {
-    try {
-      const query = `
-        INSERT INTO PROPERTY_RECORDS 
-        (property_id, address, owner_id, owner_name, deed_hash, sale_price, 
-         transaction_signature, blockchain_timestamp, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())
-      `;
-
-      const binds = [
-        propertyData.propertyId,
-        propertyData.address,
-        propertyData.ownerId,
-        propertyData.ownerName,
-        propertyData.deedHash,
-        propertyData.salePrice,
-        propertyData.transactionSignature,
-        propertyData.timestamp
-      ];
-
-      await this.executeQuery(query, binds);
-
-      return {
-        success: true,
-        message: "Property record stored in Snowflake"
-      };
-    } catch (error) {
-      console.error("Error storing property in Snowflake:", error);
-      throw error;
-    }
+  async getDb() {
+    if (this.db) return this.db;
+    return this.connect();
   }
 
   async upsertAuthUser(user) {
-    await this.executeQuery(
-      `
-        DELETE FROM AUTH_USERS
-        WHERE provider = ? AND provider_user_id = ?
-      `,
-      [user.provider, user.provider_user_id]
-    );
+    const db = await this.getDb();
+    if (!db) return;
 
-    await this.executeQuery(
-      `
-        INSERT INTO AUTH_USERS
-          (
-            provider,
-            provider_user_id,
-            email,
-            name,
-            given_name,
-            family_name,
-            picture,
-            email_verified,
-            last_login_at,
-            created_at
-          )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
-      `,
-      [
-        user.provider,
-        user.provider_user_id,
-        user.email,
-        user.name,
-        user.given_name,
-        user.family_name,
-        user.picture,
-        user.email_verified
-      ]
+    await db.collection("auth_users").updateOne(
+      {
+        provider: user.provider,
+        provider_user_id: user.provider_user_id,
+      },
+      {
+        $set: {
+          email: user.email,
+          name: user.name,
+          given_name: user.given_name,
+          family_name: user.family_name,
+          picture: user.picture,
+          email_verified: user.email_verified,
+          last_login_at: new Date(),
+        },
+        $setOnInsert: {
+          created_at: new Date(),
+        },
+      },
+      { upsert: true },
     );
   }
 
   async insertAuthEvent(event) {
-    await this.executeQuery(
-      `
-        INSERT INTO AUTH_EVENTS
-          (
-            id,
-            provider,
-            provider_user_id,
-            email,
-            name,
-            event_type,
-            redirect_path,
-            ip_address,
-            user_agent,
-            created_at
-          )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())
-      `,
-      [
-        event.id,
-        event.provider,
-        event.provider_user_id,
-        event.email,
-        event.name,
-        event.event_type,
-        event.redirect_path,
-        event.ip_address,
-        event.user_agent
-      ]
-    );
+    const db = await this.getDb();
+    if (!db) return;
+
+    await db.collection("auth_events").insertOne({
+      ...event,
+      created_at: new Date(),
+    });
   }
 
   async insertPropertyAnalytics(record) {
-    await this.executeQuery(
-      `
-        INSERT INTO PROPERTY_ANALYTICS
-          (
-            id,
-            property_address,
-            owner_name,
-            deed_hash,
-            gemini_confidence,
-            fraud_risk,
-            tx_signature,
-            property_pda,
-            notes,
-            registered_by_provider,
-            registered_by_provider_user_id,
-            registered_by_email,
-            registered_by_name,
-            created_at
-          )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP())
-      `,
-      [
-        record.id,
-        record.property_address,
-        record.owner_name,
-        record.deed_hash,
-        record.gemini_confidence,
-        record.fraud_risk,
-        record.tx_signature,
-        record.property_pda,
-        record.notes,
-        record.registered_by_provider,
-        record.registered_by_provider_user_id,
-        record.registered_by_email,
-        record.registered_by_name
-      ]
-    );
+    const db = await this.getDb();
+    if (!db) return;
+
+    await db.collection("property_analytics").insertOne({
+      ID: record.id,
+      PROPERTY_ADDRESS: record.property_address,
+      OWNER_NAME: record.owner_name,
+      DEED_HASH: record.deed_hash,
+      GEMINI_CONFIDENCE: record.gemini_confidence,
+      FRAUD_RISK: record.fraud_risk,
+      TX_SIGNATURE: record.tx_signature,
+      PROPERTY_PDA: record.property_pda,
+      NOTES: record.notes,
+      REGISTERED_BY_PROVIDER: record.registered_by_provider,
+      REGISTERED_BY_PROVIDER_USER_ID: record.registered_by_provider_user_id,
+      REGISTERED_BY_EMAIL: record.registered_by_email,
+      REGISTERED_BY_NAME: record.registered_by_name,
+      CREATED_AT: new Date(),
+    });
   }
 
   async listPropertyAnalytics(limit = 100) {
-    const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100));
-    const query = `
-      SELECT
-        id,
-        property_address,
-        owner_name,
-        deed_hash,
-        gemini_confidence,
-        fraud_risk,
-        tx_signature,
-        property_pda,
-        notes,
-        registered_by_provider,
-        registered_by_provider_user_id,
-        registered_by_email,
-        registered_by_name,
-        created_at
-      FROM PROPERTY_ANALYTICS
-      ORDER BY created_at DESC
-      LIMIT ${safeLimit}
-    `;
+    const db = await this.getDb();
+    if (!db) return [];
 
-    return this.executeQuery(query);
+    const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100));
+    return db
+      .collection("property_analytics")
+      .find({})
+      .sort({ CREATED_AT: -1 })
+      .limit(safeLimit)
+      .toArray();
   }
 
   async getPropertyAnalytics() {
-    try {
-      const query = "SELECT * FROM PROPERTY_ANALYTICS";
-      const results = await this.executeQuery(query);
-      return results[0] || {};
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
-      throw error;
-    }
+    const db = await this.getDb();
+    if (!db) return {};
+
+    const results = await db
+      .collection("property_analytics")
+      .find({})
+      .sort({ CREATED_AT: -1 })
+      .limit(1)
+      .toArray();
+
+    return results[0] || {};
+  }
+
+  async storePropertyRecord(propertyData) {
+    const db = await this.getDb();
+    if (!db) return { success: false, message: "MongoDB not connected" };
+
+    await db.collection("property_records").insertOne({
+      property_id: propertyData.propertyId,
+      address: propertyData.address,
+      owner_id: propertyData.ownerId,
+      owner_name: propertyData.ownerName,
+      deed_hash: propertyData.deedHash,
+      sale_price: propertyData.salePrice,
+      transaction_signature: propertyData.transactionSignature,
+      blockchain_timestamp: propertyData.timestamp,
+      created_at: new Date(),
+    });
+
+    return { success: true, message: "Property record stored in MongoDB" };
   }
 
   async getTransactionHistory(propertyId) {
-    try {
-      const query = `
-        SELECT *
-        FROM PROPERTY_RECORDS
-        WHERE property_id = ?
-        ORDER BY created_at DESC
-      `;
+    const db = await this.getDb();
+    if (!db) return [];
 
-      const results = await this.executeQuery(query, [propertyId]);
-      return results;
-    } catch (error) {
-      console.error("Error fetching transaction history:", error);
-      throw error;
-    }
+    return db
+      .collection("property_records")
+      .find({ property_id: propertyId })
+      .sort({ created_at: -1 })
+      .toArray();
   }
 
   async searchProperties(searchTerm) {
-    try {
-      const query = `
-        SELECT *
-        FROM PROPERTY_RECORDS
-        WHERE address ILIKE ? 
-           OR owner_name ILIKE ? 
-           OR property_id ILIKE ?
-        ORDER BY created_at DESC
-        LIMIT 50
-      `;
+    const db = await this.getDb();
+    if (!db) return [];
 
-      const searchPattern = `%${searchTerm}%`;
-      const results = await this.executeQuery(query, [
-        searchPattern,
-        searchPattern,
-        searchPattern
-      ]);
+    const safe = String(searchTerm || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(safe, "i");
 
-      return results;
-    } catch (error) {
-      console.error("Error searching properties:", error);
-      throw error;
-    }
+    return db
+      .collection("property_records")
+      .find({
+        $or: [{ address: re }, { owner_name: re }, { property_id: re }],
+      })
+      .sort({ created_at: -1 })
+      .limit(50)
+      .toArray();
   }
 
   async logVerification(propertyId, providedHash, recordedHash, isValid) {
-    try {
-      const query = `
-        INSERT INTO VERIFICATION_LOGS 
-        (property_id, provided_hash, recorded_hash, is_valid)
-        VALUES (?, ?, ?, ?)
-      `;
+    const db = await this.getDb();
+    if (!db) return { success: false };
 
-      await this.executeQuery(query, [propertyId, providedHash, recordedHash, isValid]);
+    await db.collection("verification_logs").insertOne({
+      property_id: propertyId,
+      provided_hash: providedHash,
+      recorded_hash: recordedHash,
+      is_valid: isValid,
+      created_at: new Date(),
+    });
 
-      return { success: true };
-    } catch (error) {
-      console.error("Error logging verification:", error);
-      throw error;
-    }
+    return { success: true };
   }
 
   async storeAIAnalysis(propertyId, analysisType, result, riskScore = null) {
-    try {
-      const query = `
-        INSERT INTO AI_ANALYSIS 
-        (property_id, analysis_type, analysis_result, risk_score)
-        VALUES (?, ?, PARSE_JSON(?), ?)
-      `;
+    const db = await this.getDb();
+    if (!db) return { success: false };
 
-      await this.executeQuery(query, [
-        propertyId,
-        analysisType,
-        JSON.stringify(result),
-        riskScore
-      ]);
+    await db.collection("ai_analysis").insertOne({
+      property_id: propertyId,
+      analysis_type: analysisType,
+      analysis_result: result,
+      risk_score: riskScore,
+      created_at: new Date(),
+    });
 
-      return { success: true };
-    } catch (error) {
-      console.error("Error storing AI analysis:", error);
-      throw error;
-    }
+    return { success: true };
   }
 
-  disconnect() {
-    if (this.connection) {
-      this.connection.destroy((err) => {
-        if (err) {
-          console.error("Unable to disconnect from Snowflake:", err);
-        } else {
-          console.log("Disconnected from Snowflake");
-        }
-      });
+  async disconnect() {
+    if (this.client) {
+      await this.client.close();
+      this.client = null;
+      this.db = null;
       this.connection = null;
     }
   }

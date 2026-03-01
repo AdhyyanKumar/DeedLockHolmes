@@ -50,8 +50,9 @@ app.get('/api/health', async (req, res) => {
         programId: networkInfo.programId,
         connected: true
       },
-      snowflake: {
-        database: process.env.SNOWFLAKE_DATABASE,
+      database: {
+        provider: "mongodb",
+        database: process.env.MONGODB_DB_NAME || "deedlock_holmes",
         connected: snowflakeService.connection !== null
       },
       gemini: {
@@ -119,16 +120,16 @@ app.listen(PORT, async () => {
     console.error('✗ Solana connection failed:', error.message);
   }
 
-  // Test Snowflake connection (optional unless explicitly required)
-  if (process.env.SNOWFLAKE_REQUIRED === "true") {
+  // Test MongoDB connection (optional unless explicitly required)
+  if (process.env.MONGODB_REQUIRED === "true") {
     try {
       await snowflakeService.connect();
-      console.log("Snowflake connected");
+      console.log("MongoDB connected");
     } catch (error) {
-      console.error("Snowflake connection failed:", error.message);
+      console.error("MongoDB connection failed:", error.message);
     }
   } else {
-    console.log("Snowflake optional mode enabled (set SNOWFLAKE_REQUIRED=true to enforce).");
+    console.log("MongoDB optional mode enabled (set MONGODB_REQUIRED=true to enforce).");
   }
 
   console.log('\n✅ Backend ready!\n');
