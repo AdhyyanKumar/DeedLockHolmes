@@ -7,8 +7,8 @@ export interface Property {
   confidenceScore: number;
   fraudRisk: FraudRisk;
   timestamp: string;
-  accountAddress: string;
-  explorerUrl: string;
+  accountAddress: string | null;
+  explorerUrl: string | null;
   transferCount?: number;
 }
 

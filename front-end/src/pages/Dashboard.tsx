@@ -61,7 +61,7 @@ export default function DashboardPage() {
       return (
         property.address.toLowerCase().includes(term) ||
         property.owner.toLowerCase().includes(term) ||
-        property.accountAddress.toLowerCase().includes(term)
+        (property.accountAddress ?? "").toLowerCase().includes(term)
       );
     });
 

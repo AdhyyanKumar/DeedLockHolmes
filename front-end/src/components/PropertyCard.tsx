@@ -14,6 +14,9 @@ interface PropertyCardProps {
 }
 
 export default function PropertyCard({ property }: PropertyCardProps) {
+  const accountAddress = property.accountAddress ?? "";
+  const explorerUrl = property.explorerUrl ?? "";
+
   return (
     <article className="rounded-2.5xl border border-emerald-200/30 bg-white/10 p-5 shadow-card backdrop-blur">
       <h3 className="text-base font-semibold leading-snug text-white">{property.address}</h3>
@@ -37,11 +40,12 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         <p className="text-xs uppercase tracking-wide text-emerald-100/75">On-chain account</p>
         <div className="mt-1 flex items-center justify-between gap-2">
           <code className="text-xs text-emerald-50">
-            {truncateMiddle(property.accountAddress, 8, 8)}
+            {truncateMiddle(accountAddress, 8, 8)}
           </code>
           <button
             type="button"
-            onClick={() => copyToClipboard(property.accountAddress)}
+            onClick={() => copyToClipboard(accountAddress)}
+            disabled={!accountAddress}
             className="rounded-lg border border-emerald-200/35 bg-white/10 p-1.5 text-emerald-50 hover:bg-white/20"
             aria-label="Copy account"
           >
@@ -51,12 +55,15 @@ export default function PropertyCard({ property }: PropertyCardProps) {
       </div>
 
       <a
-        href={property.explorerUrl}
+        href={explorerUrl || "#"}
         target="_blank"
         rel="noreferrer"
+        onClick={(event) => {
+          if (!explorerUrl) event.preventDefault();
+        }}
         className="mt-4 inline-flex items-center gap-2 rounded-xl border border-emerald-200/35 px-3 py-2 text-sm font-medium text-emerald-50 hover:bg-white/10"
       >
-        Explorer
+        {explorerUrl ? "Explorer" : "Explorer Unavailable"}
         <ExternalLink className="h-4 w-4" />
       </a>
     </article>

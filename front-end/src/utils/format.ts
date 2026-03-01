@@ -1,4 +1,5 @@
 export function formatTimestamp(iso: string): string {
+  if (!iso) return "N/A";
   return new Date(iso).toLocaleString(undefined, {
     year: "numeric",
     month: "short",
@@ -8,7 +9,8 @@ export function formatTimestamp(iso: string): string {
   });
 }
 
-export function truncateMiddle(value: string, head = 6, tail = 6): string {
+export function truncateMiddle(value: string | null | undefined, head = 6, tail = 6): string {
+  if (!value) return "Not available";
   if (value.length <= head + tail + 3) return value;
   return `${value.slice(0, head)}...${value.slice(-tail)}`;
 }

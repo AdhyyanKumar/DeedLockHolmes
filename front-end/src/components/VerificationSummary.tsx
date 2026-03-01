@@ -14,6 +14,9 @@ interface VerificationSummaryProps {
 }
 
 export default function VerificationSummary({ property }: VerificationSummaryProps) {
+  const accountAddress = property.accountAddress ?? "Not available";
+  const explorerUrl = property.explorerUrl ?? "";
+
   return (
     <div className="rounded-2.5xl border border-emerald-200/30 bg-white/10 p-6 shadow-card backdrop-blur">
       <div className="mb-5 flex items-start justify-between gap-3">
@@ -60,10 +63,11 @@ export default function VerificationSummary({ property }: VerificationSummaryPro
       <div className="mt-5 rounded-xl border border-emerald-200/30 bg-[#0A2E23]/55 px-4 py-3">
         <p className="text-xs uppercase tracking-wide text-emerald-100/75">On-chain account / PDA</p>
         <div className="mt-1 flex items-center justify-between gap-2">
-          <code className="text-xs text-emerald-50 sm:text-sm">{property.accountAddress}</code>
+          <code className="text-xs text-emerald-50 sm:text-sm">{accountAddress}</code>
           <button
             type="button"
-            onClick={() => copyToClipboard(property.accountAddress)}
+            onClick={() => copyToClipboard(accountAddress)}
+            disabled={!property.accountAddress}
             className="inline-flex items-center gap-1 rounded-lg border border-emerald-200/35 bg-white/10 px-2.5 py-1.5 text-xs font-medium text-emerald-50 hover:bg-white/20"
           >
             <Copy className="h-3.5 w-3.5" />
@@ -73,12 +77,15 @@ export default function VerificationSummary({ property }: VerificationSummaryPro
       </div>
 
       <a
-        href={property.explorerUrl}
+        href={explorerUrl || "#"}
         target="_blank"
         rel="noreferrer"
+        onClick={(event) => {
+          if (!explorerUrl) event.preventDefault();
+        }}
         className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#0F3B2E] hover:bg-emerald-100"
       >
-        View on Explorer
+        {explorerUrl ? "View on Explorer" : "Explorer Unavailable"}
         <ExternalLink className="h-4 w-4" />
       </a>
     </div>
