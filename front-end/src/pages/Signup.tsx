@@ -35,12 +35,12 @@ export default function SignupPage() {
             event.preventDefault();
             onSubmit();
           }}
-          className="rounded-2.5xl border border-emerald-200/30 bg-white/95 p-6 shadow-card sm:p-8"
+          className="rounded-2.5xl border border-emerald-200/30 bg-white/5 p-6 shadow-card backdrop-blur sm:p-8"
         >
-          <h2 className="text-xl font-semibold text-ink">Sign Up</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-xl font-semibold text-white">Sign Up</h2>
+          <p className="mt-1 text-sm text-emerald-100/60">
             Account creation is handled by Google. After consent, the app stores
-            your profile and auth event metadata in Snowflake.
+            your profile and auth event metadata.
           </p>
 
         <button
@@ -52,9 +52,9 @@ export default function SignupPage() {
           <ArrowRight className="h-4 w-4" />
         </button>
 
-          <p className="mt-4 text-sm text-slate-600">
+          <p className="mt-4 text-sm text-emerald-100/60">
             Already registered?{" "}
-            <Link to="/login" className="font-semibold text-brand hover:underline">
+            <Link to="/login" className="font-semibold text-emerald-300 hover:underline">
               Login
             </Link>
           </p>

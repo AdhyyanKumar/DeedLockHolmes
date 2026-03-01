@@ -42,8 +42,8 @@ a {
   position: relative;
   overflow: hidden;
   border-radius: 1.5rem;
-  border: 1px solid rgba(167, 243, 208, 0.25);
-  background: #0f3b2e;
+  border: 1px solid rgba(110, 231, 183, 0.15);
+  background: #000000;
 }
 
 .grid-stage::before {
@@ -51,10 +51,10 @@ a {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(167, 243, 208, 0.18) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(167, 243, 208, 0.18) 1px, transparent 1px);
+    linear-gradient(rgba(110, 231, 183, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(110, 231, 183, 0.08) 1px, transparent 1px);
   background-size: 72px 72px;
-  opacity: 0.45;
+  opacity: 0.35;
 }
 
 .grid-stage::after {
@@ -62,9 +62,9 @@ a {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 20% 18%, rgba(52, 211, 153, 0.22), transparent 35%),
-    radial-gradient(circle at 80% 28%, rgba(16, 185, 129, 0.18), transparent 38%),
-    radial-gradient(circle at 52% 82%, rgba(20, 184, 166, 0.12), transparent 34%);
+    radial-gradient(circle at 20% 18%, rgba(34, 197, 94, 0.09), transparent 35%),
+    radial-gradient(circle at 80% 28%, rgba(20, 184, 166, 0.06), transparent 38%),
+    radial-gradient(circle at 52% 82%, rgba(16, 185, 129, 0.05), transparent 34%);
 }
 
 .grid-stage-content {
