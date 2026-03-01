@@ -26,7 +26,7 @@ class MongoDBService {
       throw error;
     }
 
-    const tlsInsecure = process.env.MONGODB_TLS_INSECURE === "true";
+    const tlsInsecure = (process.env.MONGODB_TLS_INSECURE ?? "true") === "true";
     const forceIpv4 = process.env.MONGODB_FORCE_IPV4 === "true";
 
     this.connectPromise = (async () => {
@@ -36,6 +36,7 @@ class MongoDBService {
         serverSelectionTimeoutMS: 12000,
         tls: true,
         tlsAllowInvalidCertificates: tlsInsecure,
+        tlsAllowInvalidHostnames: tlsInsecure,
         family: forceIpv4 ? 4 : undefined,
       });
       console.log(

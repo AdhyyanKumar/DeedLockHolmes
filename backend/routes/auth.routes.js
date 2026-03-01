@@ -86,27 +86,8 @@ router.get("/me", (req, res) => {
 
 router.post("/logout", async (req, res) => {
   try {
-    const session = readSession(req);
     clearSessionCookie(res);
-
-    if (session) {
-      try {
-        await mongoService.insertAuthEvent({
-          id: crypto.randomUUID(),
-          provider: session.provider,
-          provider_user_id: session.sub,
-          email: session.email,
-          name: session.name,
-          event_type: "logout",
-          redirect_path: "/",
-          ip_address: req.ip,
-          user_agent: req.get("user-agent") || "",
-        });
-      } catch (error) {
-        console.error("Failed to log logout event:", error.message);
-      }
-    }
-
+    // Keep logout lightweight and always successful.
     return res.json({ ok: true });
   } catch (error) {
     console.error("Logout route error:", error.message);
