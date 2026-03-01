@@ -58,3 +58,19 @@ export async function getAllProperties(): Promise<Property[]> {
   };
   return payload.items ?? payload.data ?? [];
 }
+
+export async function getMyProperties(): Promise<Property[]> {
+  const response = await fetch(`${API_BASE_URL}/properties/mine`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load your properties with ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    data?: Property[];
+    items?: Property[];
+  };
+  return payload.items ?? payload.data ?? [];
+}

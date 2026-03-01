@@ -27,7 +27,8 @@ export default function Navbar() {
   const isHeroRoute =
     location.pathname === "/" ||
     location.pathname === "/dashboard" ||
-    location.pathname === "/register";
+    location.pathname === "/register" ||
+    location.pathname === "/my-properties";
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -107,6 +108,14 @@ export default function Navbar() {
               >
                 Dashboard
               </NavLink>
+              {isAuthenticated ? (
+                <NavLink
+                  to="/my-properties"
+                  className={({ isActive }) => linkClass(isActive, isHeroRoute)}
+                >
+                  My Properties
+                </NavLink>
+              ) : null}
             </nav>
 
             <button

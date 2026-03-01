@@ -5,6 +5,7 @@ import Navbar from "./components/Navbar";
 import RequireAuth from "./components/RequireAuth";
 import RegisterPage from "./pages/Register";
 import DashboardPage from "./pages/Dashboard";
+import MyPropertiesPage from "./pages/MyProperties";
 import LoginPage from "./pages/Login";
 import SignupPage from "./pages/Signup";
 import LandingPage from "./pages/Landing";
@@ -21,7 +22,8 @@ export default function App() {
   const isHeroRoute =
     location.pathname === "/" ||
     location.pathname === "/dashboard" ||
-    location.pathname === "/register";
+    location.pathname === "/register" ||
+    location.pathname === "/my-properties";
 
   return (
     <div className="app-shell text-ink">
@@ -58,6 +60,16 @@ export default function App() {
               element={
                 <motion.div key="dashboard" {...pageTransition}>
                   <DashboardPage />
+                </motion.div>
+              }
+            />
+            <Route
+              path="/my-properties"
+              element={
+                <motion.div key="my-properties" {...pageTransition}>
+                  <RequireAuth>
+                    <MyPropertiesPage />
+                  </RequireAuth>
                 </motion.div>
               }
             />

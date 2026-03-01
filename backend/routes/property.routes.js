@@ -81,6 +81,48 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/properties/mine - Get properties registered by current user
+router.get('/mine', requireAuth, async (req, res) => {
+  try {
+    const analyticsRows = await mongoService.listPropertyAnalyticsByUser(
+      {
+        provider: req.user.provider,
+        provider_user_id: req.user.sub,
+        email: req.user.email,
+      },
+      200
+    );
+
+    const properties = analyticsRows.map((row) => ({
+      id: row.ID,
+      address: row.PROPERTY_ADDRESS,
+      owner: row.OWNER_NAME,
+      confidenceScore: Number(row.GEMINI_CONFIDENCE ?? 0),
+      fraudRisk:
+        Number(row.FRAUD_RISK ?? 0) >= 80
+          ? "High"
+          : Number(row.FRAUD_RISK ?? 0) >= 50
+            ? "Medium"
+            : "Low",
+      timestamp: new Date(row.CREATED_AT).toISOString(),
+      accountAddress: row.PROPERTY_PDA,
+      explorerUrl: `https://explorer.solana.com/tx/${row.TX_SIGNATURE}?cluster=devnet`,
+      transferCount: 0,
+    }));
+
+    res.json({
+      success: true,
+      count: properties.length,
+      data: properties,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // GET /api/properties/:id - Get property by ID
 router.get('/:id', async (req, res) => {
   try {

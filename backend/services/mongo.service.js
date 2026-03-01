@@ -151,6 +151,36 @@ class MongoDBService {
       .toArray();
   }
 
+  async listPropertyAnalyticsByUser(user, limit = 100) {
+    const db = await this.getDb();
+    if (!db) return [];
+
+    const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100));
+    const provider = String(user?.provider || "").trim();
+    const providerUserId = String(user?.provider_user_id || "").trim();
+    const email = String(user?.email || "").trim();
+
+    const orConditions = [];
+    if (provider && providerUserId) {
+      orConditions.push({
+        REGISTERED_BY_PROVIDER: provider,
+        REGISTERED_BY_PROVIDER_USER_ID: providerUserId,
+      });
+    }
+    if (email) {
+      orConditions.push({ REGISTERED_BY_EMAIL: email });
+    }
+
+    if (orConditions.length === 0) return [];
+
+    return db
+      .collection("property_analytics")
+      .find({ $or: orConditions })
+      .sort({ CREATED_AT: -1 })
+      .limit(safeLimit)
+      .toArray();
+  }
+
   async getPropertyAnalytics() {
     const db = await this.getDb();
     if (!db) return {};

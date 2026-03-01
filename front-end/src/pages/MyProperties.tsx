@@ -1,15 +1,14 @@
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getAllProperties } from "../api/propertyApi";
-import { useAuth } from "../components/AuthProvider";
+import { getMyProperties } from "../api/propertyApi";
 import PropertyCard from "../components/PropertyCard";
 import type { FraudRisk, Property } from "../types/property";
 
 type RiskFilter = "All" | FraudRisk;
 type SortBy = "Newest" | "Oldest" | "Highest Confidence";
 
-function DashboardSkeleton() {
+function MyPropertiesSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 6 }).map((_, idx) => (
@@ -29,8 +28,7 @@ function DashboardSkeleton() {
   );
 }
 
-export default function DashboardPage() {
-  const { isAuthenticated } = useAuth();
+export default function MyPropertiesPage() {
   const [items, setItems] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -40,7 +38,7 @@ export default function DashboardPage() {
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    getAllProperties()
+    getMyProperties()
       .then((data) => {
         if (mounted) setItems(data);
       })
@@ -69,8 +67,7 @@ export default function DashboardPage() {
       if (sortBy === "Highest Confidence") {
         return b.confidenceScore - a.confidenceScore;
       }
-      const diff =
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
       return sortBy === "Oldest" ? diff : -diff;
     });
   }, [items, riskFilter, search, sortBy]);
@@ -90,57 +87,57 @@ export default function DashboardPage() {
       <div className="relative z-10 mx-auto max-w-7xl space-y-6">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-100/90">
-            Registry Directory
+            Portfolio View
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-            Browse Properties
+            My Properties
           </h1>
         </div>
 
         <div className="rounded-2.5xl border border-emerald-200/30 bg-white/10 p-4 shadow-card backdrop-blur sm:p-5">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by address, owner, or account"
-            className="rounded-xl border border-emerald-200/35 bg-[#0A2E23]/55 px-3 py-2.5 text-sm text-emerald-50 outline-none ring-emerald-200/40 placeholder:text-emerald-200/60 focus:ring"
-          />
-          <select
-            value={riskFilter}
-            onChange={(event) => setRiskFilter(event.target.value as RiskFilter)}
-            className="rounded-xl border border-emerald-200/35 bg-[#0A2E23]/55 px-3 py-2.5 text-sm text-emerald-50 outline-none ring-emerald-200/40 focus:ring"
-          >
-            <option>All</option>
-            <option>Low</option>
-            <option>Medium</option>
-            <option>High</option>
-          </select>
-          <select
-            value={sortBy}
-            onChange={(event) => setSortBy(event.target.value as SortBy)}
-            className="rounded-xl border border-emerald-200/35 bg-[#0A2E23]/55 px-3 py-2.5 text-sm text-emerald-50 outline-none ring-emerald-200/40 focus:ring"
-          >
-            <option>Newest</option>
-            <option>Oldest</option>
-            <option>Highest Confidence</option>
-          </select>
-        </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search by address, owner, or account"
+              className="rounded-xl border border-emerald-200/35 bg-[#0A2E23]/55 px-3 py-2.5 text-sm text-emerald-50 outline-none ring-emerald-200/40 placeholder:text-emerald-200/60 focus:ring"
+            />
+            <select
+              value={riskFilter}
+              onChange={(event) => setRiskFilter(event.target.value as RiskFilter)}
+              className="rounded-xl border border-emerald-200/35 bg-[#0A2E23]/55 px-3 py-2.5 text-sm text-emerald-50 outline-none ring-emerald-200/40 focus:ring"
+            >
+              <option>All</option>
+              <option>Low</option>
+              <option>Medium</option>
+              <option>High</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as SortBy)}
+              className="rounded-xl border border-emerald-200/35 bg-[#0A2E23]/55 px-3 py-2.5 text-sm text-emerald-50 outline-none ring-emerald-200/40 focus:ring"
+            >
+              <option>Newest</option>
+              <option>Oldest</option>
+              <option>Highest Confidence</option>
+            </select>
+          </div>
         </div>
 
         {loading ? (
-          <DashboardSkeleton />
+          <MyPropertiesSkeleton />
         ) : filteredItems.length === 0 ? (
           <div className="rounded-2.5xl border border-emerald-200/30 bg-white/10 p-10 text-center shadow-card backdrop-blur">
-            <h2 className="text-lg font-semibold text-white">No properties found</h2>
+            <h2 className="text-lg font-semibold text-white">No properties registered yet</h2>
             <p className="mt-2 text-sm text-emerald-50/85">
-              Register your first property to populate the registry dashboard.
+              Register your first property to see it in your portfolio.
             </p>
             <Link
-              to={isAuthenticated ? "/register" : "/"}
+              to="/register"
               className="mt-4 inline-flex rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#0F3B2E] hover:bg-emerald-100"
             >
-              {isAuthenticated ? "Go to Register Property" : "Go to Main Page"}
+              Register Property
             </Link>
           </div>
         ) : (
@@ -158,3 +155,4 @@ export default function DashboardPage() {
     </section>
   );
 }
+
