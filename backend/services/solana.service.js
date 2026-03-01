@@ -170,16 +170,16 @@ class SolanaService {
     };
   }
 
-  async registerOnChain({ deedHash, propertyAddress, ownerName, confidence, fraudRisk }) {
+  async registerOnChain({ propertyId, address, ownerId, ownerName, deedHash, salePrice }) {
     const program = this.getProgramInstance();
     const authority = program.provider.wallet.publicKey;
     const [propertyPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("property"), authority.toBuffer(), Buffer.from(deedHash)],
+      [Buffer.from("property"), Buffer.from(propertyId)],
       program.programId
     );
 
     const txSig = await program.methods
-      .registerProperty(propertyAddress, ownerName, deedHash, confidence, fraudRisk)
+      .registerProperty(propertyId, address, ownerId, ownerName, deedHash, new BN(salePrice))
       .accounts({
         property: propertyPda,
         authority,

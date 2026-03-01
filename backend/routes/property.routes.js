@@ -88,9 +88,9 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
     }
 
     const deedHash = hashFile(req.file.buffer);
-    const propertyId = crypto.randomUUID();
+    const propertyId = crypto.randomUUID().replace(/-/g, ""); // 32-char compact UUID fits Solana's 32-byte seed limit
     const ownerId = req.user.sub || req.user.email;
-    const salePrice = 0;
+    const salePrice = Math.max(1, Number(req.body.sale_price) || 1);
     const history = await mongoService.getTransactionHistory(propertyId).catch(() => []);
 
     console.log('Registering property:', propertyId);
@@ -108,11 +108,12 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
     );
 
     const blockchainResult = await solanaService.registerOnChain({
-      deedHash,
-      propertyAddress,
+      propertyId,
+      address: propertyAddress,
+      ownerId,
       ownerName,
-      confidence: Math.max(0, 100 - Number(fraudAnalysis.riskScore || 0)),
-      fraudRisk: Number(fraudAnalysis.riskScore || 0)
+      deedHash,
+      salePrice,
     });
 
     await mongoService.storePropertyRecord({

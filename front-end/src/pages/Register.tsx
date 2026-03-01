@@ -199,9 +199,6 @@ export default function RegisterPage() {
                 <p className="mt-2 text-sm text-red-100/90">
                   {rejectionReason ?? "Verification failed."}
                 </p>
-                <p className="mt-1 text-sm text-red-100/80">
-                  Fraud risk assessment: Elevated risk signals detected.
-                </p>
               </div>
             </div>
             <button
