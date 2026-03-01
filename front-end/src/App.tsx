@@ -10,6 +10,7 @@ import MyPropertiesPage from "./pages/MyProperties";
 import LoginPage from "./pages/Login";
 import SignupPage from "./pages/Signup";
 import LandingPage from "./pages/Landing";
+import AboutPage from "./pages/About";
 
 const pageTransition = {
   initial: { opacity: 0, y: 8 },
@@ -24,7 +25,8 @@ export default function App() {
     location.pathname === "/" ||
     location.pathname === "/dashboard" ||
     location.pathname === "/register" ||
-    location.pathname === "/my-properties";
+    location.pathname === "/my-properties" ||
+    location.pathname === "/about";
 
   return (
     <div className="app-shell relative text-ink">
@@ -62,6 +64,14 @@ export default function App() {
               element={
                 <motion.div key="dashboard" {...pageTransition}>
                   <DashboardPage />
+                </motion.div>
+              }
+            />
+            <Route
+              path="/about"
+              element={
+                <motion.div key="about" {...pageTransition}>
+                  <AboutPage />
                 </motion.div>
               }
             />

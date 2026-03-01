@@ -24,7 +24,8 @@ export default function Navbar() {
     location.pathname === "/" ||
     location.pathname === "/dashboard" ||
     location.pathname === "/register" ||
-    location.pathname === "/my-properties";
+    location.pathname === "/my-properties" ||
+    location.pathname === "/about";
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -84,6 +85,9 @@ export default function Navbar() {
             <nav className="flex items-center gap-2">
               <NavLink to="/" className={({ isActive }) => linkClass(isActive)}>
                 Home
+              </NavLink>
+              <NavLink to="/about" className={({ isActive }) => linkClass(isActive)}>
+                About
               </NavLink>
               {isAuthenticated ? (
                 <NavLink to="/register" className={({ isActive }) => linkClass(isActive)}>
