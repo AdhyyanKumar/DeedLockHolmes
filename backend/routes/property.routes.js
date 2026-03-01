@@ -24,6 +24,29 @@ function mapRegistrationError(error) {
   return message;
 }
 
+function shouldBlockBlockchainRegistration(fraudAnalysis) {
+  const recommendation = String(fraudAnalysis?.recommendation || "").toUpperCase();
+  const riskScore = Number(fraudAnalysis?.riskScore || 0);
+  const riskLevel = String(fraudAnalysis?.riskLevel || "").toUpperCase();
+  const threshold = Number(process.env.AI_BLOCK_RISK_THRESHOLD || 90);
+
+  if (recommendation === "REJECT") {
+    return {
+      blocked: true,
+      reason: "AI marked this deed as fraudulent (REJECT).",
+    };
+  }
+
+  if (riskLevel === "HIGH" && riskScore >= threshold) {
+    return {
+      blocked: true,
+      reason: `AI risk score ${riskScore} exceeds blocking threshold ${threshold}.`,
+    };
+  }
+
+  return { blocked: false, reason: "" };
+}
+
 // GET /api/properties - Get all properties
 router.get('/', async (req, res) => {
   try {
@@ -106,6 +129,22 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
       },
       history
     );
+
+    const blockDecision = shouldBlockBlockchainRegistration(fraudAnalysis);
+    if (blockDecision.blocked) {
+      await mongoService.storeAIAnalysis(
+        propertyId,
+        'FRAUD_RISK_BLOCKED',
+        fraudAnalysis,
+        fraudAnalysis.riskScore
+      );
+
+      return res.status(422).json({
+        success: false,
+        error: `Fraudulent deed found. Not adding to blockchain. ${blockDecision.reason}`,
+        fraudAnalysis,
+      });
+    }
 
     const blockchainResult = await solanaService.registerOnChain({
       propertyId,

@@ -98,6 +98,10 @@ export default function RegisterPage() {
     setRejectionReason(null);
   }
 
+  const isFraudBlocked =
+    flowState === "failure" &&
+    String(rejectionReason || "").toLowerCase().includes("fraudulent deed found");
+
   return (
     <section className="relative min-h-[calc(100vh-6rem)] overflow-hidden bg-[#0F3B2E] px-4 py-12 sm:px-6 lg:px-8">
       <div
@@ -194,8 +198,13 @@ export default function RegisterPage() {
               <AlertTriangle className="mt-0.5 h-5 w-5 text-red-200" />
               <div>
                 <h3 className="text-lg font-semibold text-red-100">
-                  Registration Rejected
+                  {isFraudBlocked ? "Fraudulent Deed Found" : "Registration Rejected"}
                 </h3>
+                {isFraudBlocked ? (
+                  <p className="mt-2 text-sm font-semibold text-red-100">
+                    This deed was flagged by AI and was not added to blockchain.
+                  </p>
+                ) : null}
                 <p className="mt-2 text-sm text-red-100/90">
                   {rejectionReason ?? "Verification failed."}
                 </p>
