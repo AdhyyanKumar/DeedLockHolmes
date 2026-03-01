@@ -220,13 +220,14 @@ PROPERTY INFORMATION:
 PREVIOUS TRANSACTIONS:
 ${historyText}
 
-ANALYSIS TASK:
-Perform fraud risk assessment across:
-1. Price anomalies
-2. Document quality
-3. Party information quality
-4. Transaction timing patterns
-5. Legal description quality
+ANALYSIS TASK (LESS STRICT):
+Focus mainly on whether the deed appears to match the submitted property details and includes a real signature.
+Use these practical rules:
+1. Name, address, and price only need to be a close/approximate match (small wording differences are acceptable).
+2. Signatures do NOT need exact spelling match to typed names.
+3. Presence of signature is important, but do NOT require a notary seal/stamp/embosser.
+4. "Prepared By: Automated Registry System" is acceptable and should not be treated as suspicious by itself.
+5. Reject only for clear high-risk issues (major identity/address/price mismatch, obvious tampering, or missing execution signatures).
 
 OUTPUT FORMAT (STRICT):
 Risk Score: [0-100]
@@ -368,7 +369,13 @@ Property:
 - Owner: ${propertyData.ownerName || "N/A"}
 - Price: $${safeLocaleNumber(propertyData.salePrice)}
 
-Look for visual tampering, missing signatures/stamps, inconsistencies, or alteration clues.
+Look for visual tampering and major inconsistencies.
+Use these rules:
+- Name, address, and price can be approximate matches.
+- Signatures may vary from typed names.
+- Do not require a notary seal/stamp.
+- "Prepared By: Automated Registry System" is acceptable.
+- Reject only for clear serious issues such as obvious tampering, major mismatch, or missing execution signatures.
 Return:
 Risk Score: [0-100]
 Risk Level: [LOW/MEDIUM/HIGH]
