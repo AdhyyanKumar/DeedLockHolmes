@@ -10,6 +10,9 @@ export interface Property {
   accountAddress: string | null;
   explorerUrl: string | null;
   transferCount?: number;
+  analysis?: string | null;
+  factors?: string[];
+  recommendation?: string | null;
 }
 
 export interface RegisterPropertyResult {

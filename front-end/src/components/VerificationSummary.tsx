@@ -1,4 +1,4 @@
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, ShieldCheck } from "lucide-react";
 import type { Property } from "../types/property";
 import { copyToClipboard } from "../utils/clipboard";
 import { formatTimestamp } from "../utils/format";
@@ -75,6 +75,42 @@ export default function VerificationSummary({ property }: VerificationSummaryPro
           </button>
         </div>
       </div>
+
+      {(property.analysis || (property.factors && property.factors.length > 0)) && (
+        <div className="mt-5 rounded-xl border border-emerald-200/30 bg-[#0A2E23]/55 px-4 py-4">
+          <div className="mb-3 flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-emerald-300" />
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-100/75">
+              AI Analysis
+            </p>
+            {property.recommendation && (
+              <span className="ml-auto rounded-full border border-emerald-200/30 px-2 py-0.5 text-xs font-medium text-emerald-200">
+                {property.recommendation}
+              </span>
+            )}
+          </div>
+
+          {property.factors && property.factors.length > 0 && (
+            <ul className="mb-3 space-y-1.5">
+              {property.factors.map((factor, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-emerald-100/90">
+                  <span className="mt-0.5 text-emerald-400">•</span>
+                  {factor}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {property.analysis && (
+            <p className="whitespace-pre-wrap text-xs leading-relaxed text-emerald-100/70">
+              {property.analysis
+                .replace(/```(?:json)?\s*/gi, "")
+                .replace(/\*\*/g, "")
+                .trim()}
+            </p>
+          )}
+        </div>
+      )}
 
       <a
         href={explorerUrl || "#"}

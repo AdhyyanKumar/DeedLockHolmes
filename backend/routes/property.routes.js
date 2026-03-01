@@ -166,7 +166,10 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
         timestamp: new Date().toISOString(),
         accountAddress: blockchainResult.propertyPda,
         explorerUrl: blockchainResult.explorerUrl,
-        transferCount: 0
+        transferCount: 0,
+        analysis: fraudAnalysis.analysis || null,
+        factors: Array.isArray(fraudAnalysis.factors) ? fraudAnalysis.factors : [],
+        recommendation: fraudAnalysis.recommendation || null,
       },
       blockchain: blockchainResult,
       fraudAnalysis,
