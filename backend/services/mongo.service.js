@@ -157,26 +157,13 @@ class MongoDBService {
     if (!db) return [];
 
     const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100));
-    const provider = String(user?.provider || "").trim();
-    const providerUserId = String(user?.provider_user_id || "").trim();
     const email = String(user?.email || "").trim();
 
-    const orConditions = [];
-    if (provider && providerUserId) {
-      orConditions.push({
-        REGISTERED_BY_PROVIDER: provider,
-        REGISTERED_BY_PROVIDER_USER_ID: providerUserId,
-      });
-    }
-    if (email) {
-      orConditions.push({ REGISTERED_BY_EMAIL: email });
-    }
-
-    if (orConditions.length === 0) return [];
+    if (!email) return [];
 
     return db
       .collection("property_analytics")
-      .find({ $or: orConditions })
+      .find({ REGISTERED_BY_EMAIL: email })
       .sort({ CREATED_AT: -1 })
       .limit(safeLimit)
       .toArray();
@@ -249,6 +236,8 @@ class MongoDBService {
       {
         $set: {
           OWNER_NAME: newOwnerName,
+          REGISTERED_BY_PROVIDER: null,
+          REGISTERED_BY_PROVIDER_USER_ID: null,
           REGISTERED_BY_EMAIL: newOwnerEmail,
           REGISTERED_BY_NAME: newOwnerName,
           PREVIOUS_OWNER_NAME: previousOwnerName,
