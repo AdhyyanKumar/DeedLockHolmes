@@ -5,7 +5,7 @@ import ProgressSteps from "../components/ProgressSteps";
 import UploadCard from "../components/UploadCard";
 import VerificationSummary from "../components/VerificationSummary";
 import { registerProperty } from "../api/propertyApi";
-import type { Property } from "../types/property";
+import type { Property, RegisterPropertyResult } from "../types/property";
 
 type FlowState = "idle" | "progress" | "success" | "failure";
 
@@ -16,10 +16,13 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [propertyAddress, setPropertyAddress] = useState("");
   const [ownerName, setOwnerName] = useState("");
+  const [salePrice, setSalePrice] = useState("");
   const [flowState, setFlowState] = useState<FlowState>("idle");
   const [currentStep, setCurrentStep] = useState(1);
   const [result, setResult] = useState<Property | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [rejectionFraudAnalysis, setRejectionFraudAnalysis] =
+    useState<RegisterPropertyResult["fraudAnalysis"] | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const timersRef = useRef<number[]>([]);
 
@@ -53,12 +56,19 @@ export default function RegisterPage() {
     setFlowState("idle");
     setResult(null);
     setRejectionReason(null);
+    setRejectionFraudAnalysis(null);
   }
 
   async function onSubmit() {
     if (!file) return;
-    if (!propertyAddress.trim() || !ownerName.trim()) {
-      setError("Property address and owner name are required.");
+    if (!propertyAddress.trim() || !ownerName.trim() || !salePrice.trim()) {
+      setError("Property address, owner name, and sale price are required.");
+      return;
+    }
+
+    const parsedSalePrice = Number(salePrice);
+    if (!Number.isFinite(parsedSalePrice) || parsedSalePrice <= 0) {
+      setError("Sale price must be a positive number.");
       return;
     }
 
@@ -67,6 +77,7 @@ export default function RegisterPage() {
     setCurrentStep(1);
     setResult(null);
     setRejectionReason(null);
+    setRejectionFraudAnalysis(null);
 
     timersRef.current.forEach((timer) => window.clearTimeout(timer));
     timersRef.current = [
@@ -74,7 +85,12 @@ export default function RegisterPage() {
       window.setTimeout(() => setCurrentStep(3), 2400),
     ];
 
-    const response = await registerProperty(file, propertyAddress.trim(), ownerName.trim());
+    const response = await registerProperty(
+      file,
+      propertyAddress.trim(),
+      ownerName.trim(),
+      parsedSalePrice,
+    );
 
     if (response.status === "success" && response.data) {
       setCurrentStep(3);
@@ -89,6 +105,7 @@ export default function RegisterPage() {
       response.error ??
         "Registration could not be completed. Document integrity checks were inconclusive.",
     );
+    setRejectionFraudAnalysis(response.fraudAnalysis ?? null);
   }
 
   function resetAfterFailure() {
@@ -96,6 +113,7 @@ export default function RegisterPage() {
     setFile(null);
     setError(null);
     setRejectionReason(null);
+    setRejectionFraudAnalysis(null);
   }
 
   const isFraudBlocked =
@@ -141,10 +159,12 @@ export default function RegisterPage() {
               error={error}
               propertyAddress={propertyAddress}
               ownerName={ownerName}
+              salePrice={salePrice}
               isSubmitting={false}
               isDragOver={isDragOver}
               onPropertyAddressChange={setPropertyAddress}
               onOwnerNameChange={setOwnerName}
+              onSalePriceChange={setSalePrice}
               onDragOver={(event) => {
                 event.preventDefault();
                 setIsDragOver(true);
@@ -208,6 +228,38 @@ export default function RegisterPage() {
                 <p className="mt-2 text-sm text-red-100/90">
                   {rejectionReason ?? "Verification failed."}
                 </p>
+                {isFraudBlocked && rejectionFraudAnalysis ? (
+                  <div className="mt-4 rounded-xl border border-red-200/30 bg-red-950/25 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-red-100/85">
+                      AI Fraud Reasons
+                    </p>
+                    <p className="mt-1 text-xs text-red-100/90">
+                      Risk Score: {Number(rejectionFraudAnalysis.riskScore ?? 0)} | Risk Level:{" "}
+                      {String(rejectionFraudAnalysis.riskLevel || "N/A")} | Confidence:{" "}
+                      {Number(rejectionFraudAnalysis.confidence ?? 0)}%
+                    </p>
+                    {Array.isArray(rejectionFraudAnalysis.factors) &&
+                    rejectionFraudAnalysis.factors.length > 0 ? (
+                      <ul className="mt-2 space-y-1">
+                        {rejectionFraudAnalysis.factors.map((factor, idx) => (
+                          <li key={`${idx}-${factor}`} className="text-xs text-red-100/90">
+                            * {factor}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {rejectionFraudAnalysis.recommendation ? (
+                      <p className="mt-2 text-xs text-red-100/90">
+                        Recommendation: {rejectionFraudAnalysis.recommendation}
+                      </p>
+                    ) : null}
+                    {rejectionFraudAnalysis.analysis ? (
+                      <p className="mt-2 whitespace-pre-wrap text-xs text-red-100/75">
+                        {rejectionFraudAnalysis.analysis}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
             <button

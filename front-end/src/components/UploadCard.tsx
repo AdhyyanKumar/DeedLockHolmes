@@ -7,10 +7,12 @@ interface UploadCardProps {
   error: string | null;
   propertyAddress: string;
   ownerName: string;
+  salePrice: string;
   isSubmitting: boolean;
   isDragOver: boolean;
   onPropertyAddressChange: (value: string) => void;
   onOwnerNameChange: (value: string) => void;
+  onSalePriceChange: (value: string) => void;
   onDragOver: (event: DragEvent<HTMLLabelElement>) => void;
   onDragLeave: (event: DragEvent<HTMLLabelElement>) => void;
   onDrop: (event: DragEvent<HTMLLabelElement>) => void;
@@ -23,10 +25,12 @@ export default function UploadCard({
   error,
   propertyAddress,
   ownerName,
+  salePrice,
   isSubmitting,
   isDragOver,
   onPropertyAddressChange,
   onOwnerNameChange,
+  onSalePriceChange,
   onDragOver,
   onDragLeave,
   onDrop,
@@ -52,6 +56,18 @@ export default function UploadCard({
             onChange={(event) => onOwnerNameChange(event.target.value)}
             className="mt-2 w-full rounded-xl border border-emerald-200/35 bg-[#0A2E23]/60 px-3 py-2.5 text-sm text-emerald-50 outline-none placeholder:text-emerald-200/55"
             placeholder="Alex Morgan"
+          />
+        </label>
+        <label className="block text-sm text-emerald-100 sm:col-span-2">
+          Sale Price (USD)
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={salePrice}
+            onChange={(event) => onSalePriceChange(event.target.value)}
+            className="mt-2 w-full rounded-xl border border-emerald-200/35 bg-[#0A2E23]/60 px-3 py-2.5 text-sm text-emerald-50 outline-none placeholder:text-emerald-200/55"
+            placeholder="250000"
           />
         </label>
       </div>
@@ -96,7 +112,7 @@ export default function UploadCard({
 
       <button
         type="button"
-        disabled={!file || !propertyAddress.trim() || !ownerName.trim() || isSubmitting}
+        disabled={!file || !propertyAddress.trim() || !ownerName.trim() || !salePrice.trim() || isSubmitting}
         onClick={onSubmit}
         className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#0F3B2E] hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
       >

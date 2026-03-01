@@ -19,4 +19,12 @@ export interface RegisterPropertyResult {
   status: "success" | "rejected";
   data?: Property;
   error?: string;
+  fraudAnalysis?: {
+    riskScore?: number;
+    riskLevel?: string;
+    confidence?: number;
+    recommendation?: string;
+    factors?: string[];
+    analysis?: string;
+  };
 }

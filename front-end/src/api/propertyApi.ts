@@ -5,6 +5,7 @@ export async function registerProperty(
   file: File,
   propertyAddress: string,
   ownerName: string,
+  salePrice: number,
 ): Promise<RegisterPropertyResult> {
   if (file.size > 10 * 1024 * 1024) {
     return {
@@ -17,6 +18,7 @@ export async function registerProperty(
   formData.append("deed", file);
   formData.append("property_address", propertyAddress);
   formData.append("owner_name", ownerName);
+  formData.append("sale_price", String(salePrice));
 
   const response = await fetch(`${API_BASE_URL}/properties/register`, {
     method: "POST",
@@ -37,6 +39,7 @@ export async function registerProperty(
     return {
       status: "rejected",
       error: payload?.error || "Registration failed.",
+      fraudAnalysis: payload?.fraudAnalysis,
     };
   }
 
