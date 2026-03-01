@@ -26,10 +26,21 @@ class SnowflakeService {
       throw error;
     }
 
+    const tlsInsecure = process.env.MONGODB_TLS_INSECURE === "true";
+    const forceIpv4 = process.env.MONGODB_FORCE_IPV4 === "true";
+
     this.connectPromise = (async () => {
       this.client = new MongoClient(uri, {
         maxPoolSize: 10,
+        retryWrites: true,
+        serverSelectionTimeoutMS: 12000,
+        tls: true,
+        tlsAllowInvalidCertificates: tlsInsecure,
+        family: forceIpv4 ? 4 : undefined,
       });
+      console.log(
+        `MongoDB connect options: tls=true, tlsAllowInvalidCertificates=${tlsInsecure}, forceIpv4=${forceIpv4}`,
+      );
       await this.client.connect();
       this.db = this.client.db(dbName);
       this.connection = this.db;
