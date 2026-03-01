@@ -3,7 +3,7 @@ const router = express.Router();
 const crypto = require("crypto");
 const multer = require("multer");
 const solanaService = require('../services/solana.service');
-const snowflakeService = require('../services/snowflake.service');
+const mongoService = require('../services/mongo.service');
 const geminiService = require('../services/gemini.service');
 const { requireAuth } = require("../auth");
 const { hashFile } = require("../utils/hash");
@@ -27,7 +27,7 @@ function mapRegistrationError(error) {
 // GET /api/properties - Get all properties
 router.get('/', async (req, res) => {
   try {
-    const analyticsRows = await snowflakeService.listPropertyAnalytics(100);
+    const analyticsRows = await mongoService.listPropertyAnalytics(100);
     const properties = analyticsRows.map((row) => ({
       id: row.ID,
       address: row.PROPERTY_ADDRESS,
@@ -91,7 +91,7 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
     const propertyId = crypto.randomUUID();
     const ownerId = req.user.sub || req.user.email;
     const salePrice = 0;
-    const history = await snowflakeService.getTransactionHistory(propertyId).catch(() => []);
+    const history = await mongoService.getTransactionHistory(propertyId).catch(() => []);
 
     console.log('Registering property:', propertyId);
 
@@ -115,7 +115,7 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
       fraudRisk: Number(fraudAnalysis.riskScore || 0)
     });
 
-    await snowflakeService.storePropertyRecord({
+    await mongoService.storePropertyRecord({
       propertyId,
       address: propertyAddress,
       ownerId,
@@ -126,14 +126,14 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
       timestamp: Date.now()
     });
 
-    await snowflakeService.storeAIAnalysis(
+    await mongoService.storeAIAnalysis(
       propertyId,
       'FRAUD_RISK',
       fraudAnalysis,
       fraudAnalysis.riskScore
     );
 
-    await snowflakeService.insertPropertyAnalytics({
+    await mongoService.insertPropertyAnalytics({
       id: propertyId,
       property_address: propertyAddress,
       owner_name: ownerName,
@@ -190,14 +190,14 @@ router.get('/:id/analyze', async (req, res) => {
     // Get property from blockchain
     const property = await solanaService.getProperty(req.params.id);
     
-    // Get transaction history from Snowflake
-    const history = await snowflakeService.getTransactionHistory(req.params.id);
+    // Get transaction history from MongoDB
+    const history = await mongoService.getTransactionHistory(req.params.id);
     
     // Generate AI analysis
     const analysis = await geminiService.analyzeProperty(property, history);
     
-    // Store analysis in Snowflake
-    await snowflakeService.storeAIAnalysis(
+    // Store analysis in MongoDB
+    await mongoService.storeAIAnalysis(
       req.params.id,
       'PRICE_ANALYSIS',
       analysis
@@ -221,7 +221,7 @@ router.get('/:id/analyze', async (req, res) => {
 // GET /api/properties/search/:term - Search properties
 router.get('/search/:term', async (req, res) => {
   try {
-    const results = await snowflakeService.searchProperties(req.params.term);
+    const results = await mongoService.searchProperties(req.params.term);
     res.json({ 
       success: true, 
       count: results.length,
@@ -236,3 +236,4 @@ router.get('/search/:term', async (req, res) => {
 });
 
 module.exports = router;
+

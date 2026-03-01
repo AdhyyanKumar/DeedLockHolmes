@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const snowflakeService = require('../services/snowflake.service');
+const mongoService = require('../services/mongo.service');
 
 // GET /api/analytics - Get overall analytics
 router.get('/', async (req, res) => {
   try {
-    const analytics = await snowflakeService.getPropertyAnalytics();
+    const analytics = await mongoService.getPropertyAnalytics();
     res.json({ 
       success: true, 
       data: analytics 
@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 // GET /api/analytics/history/:propertyId - Get transaction history
 router.get('/history/:propertyId', async (req, res) => {
   try {
-    const history = await snowflakeService.getTransactionHistory(req.params.propertyId);
+    const history = await mongoService.getTransactionHistory(req.params.propertyId);
     res.json({ 
       success: true, 
       count: history.length,

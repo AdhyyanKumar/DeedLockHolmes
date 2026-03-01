@@ -1,7 +1,7 @@
 {
   "name": "solana-property-registry-backend",
   "version": "1.0.0",
-  "description": "Backend for Solana Property Registry with Snowflake and Gemini AI",
+  "description": "Backend for Solana Property Registry with MongoDB and Gemini AI",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -29,3 +29,4 @@
     "nodemon": "^3.0.2"
   }
 }
+

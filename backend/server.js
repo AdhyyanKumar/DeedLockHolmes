@@ -12,7 +12,7 @@ const aiRoutes = require('./routes/ai.routes');
 
 // Import services to test connections
 const solanaService = require('./services/solana.service');
-const snowflakeService = require('./services/snowflake.service');
+const mongoService = require('./services/mongo.service');
 
 const app = express();
 
@@ -53,7 +53,7 @@ app.get('/api/health', async (req, res) => {
       database: {
         provider: "mongodb",
         database: process.env.MONGODB_DB_NAME || "deedlock_holmes",
-        connected: snowflakeService.connection !== null
+        connected: mongoService.connection !== null
       },
       gemini: {
         configured: !!process.env.GEMINI_API_KEY
@@ -129,7 +129,8 @@ app.listen(PORT, async () => {
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n\nShutting down gracefully...');
-  snowflakeService.disconnect();
+  mongoService.disconnect();
   process.exit(0);
 });
+
 

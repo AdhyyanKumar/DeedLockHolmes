@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const { hashFile } = require('../utils/hash');
 const solanaService = require('../services/solana.service');
-const snowflakeService = require('../services/snowflake.service');
+const mongoService = require('../services/mongo.service');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -35,8 +35,8 @@ router.post('/verify', upload.single('deed'), async (req, res) => {
     // Verify against blockchain
     const result = await solanaService.verifyDeed(propertyId, uploadedHash);
 
-    // Log verification in Snowflake
-    await snowflakeService.logVerification(
+    // Log verification in MongoDB
+    await mongoService.logVerification(
       propertyId,
       uploadedHash,
       result.recordedHash,
@@ -71,8 +71,8 @@ router.post('/verify-hash', async (req, res) => {
 
     const result = await solanaService.verifyDeed(propertyId, deedHash);
 
-    // Log verification in Snowflake
-    await snowflakeService.logVerification(
+    // Log verification in MongoDB
+    await mongoService.logVerification(
       propertyId,
       deedHash,
       result.recordedHash,

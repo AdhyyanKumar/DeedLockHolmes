@@ -1,7 +1,7 @@
 const { MongoClient } = require("mongodb");
 require("dotenv").config();
 
-class SnowflakeService {
+class MongoDBService {
   constructor() {
     this.client = null;
     this.connection = null;
@@ -251,4 +251,5 @@ class SnowflakeService {
   }
 }
 
-module.exports = new SnowflakeService();
+module.exports = new MongoDBService();
+

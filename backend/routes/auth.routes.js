@@ -12,7 +12,7 @@ const {
   setSessionCookie,
   verifySignedPayload,
 } = require("../auth");
-const snowflakeService = require("../services/snowflake.service");
+const mongoService = require("../services/mongo.service");
 
 router.get("/google/start", (req, res) => {
   const redirectPath = getSafeRedirectPath(req.query.redirect);
@@ -34,19 +34,27 @@ router.get("/google/callback", async (req, res) => {
     const tokens = await exchangeCodeForTokens(req, String(code));
     const profile = await fetchGoogleProfile(tokens.access_token);
 
-    // Fail closed for login if DB persistence is unavailable.
-    await snowflakeService.upsertAuthUser(profile);
-    await snowflakeService.insertAuthEvent({
-      id: crypto.randomUUID(),
-      provider: profile.provider,
-      provider_user_id: profile.provider_user_id,
-      email: profile.email,
-      name: profile.name,
-      event_type: "login",
-      redirect_path: verifiedState.redirectPath,
-      ip_address: req.ip,
-      user_agent: req.get("user-agent") || "",
-    });
+    const requireDb = process.env.AUTH_REQUIRE_DB === "true";
+    try {
+      await mongoService.upsertAuthUser(profile);
+      await mongoService.insertAuthEvent({
+        id: crypto.randomUUID(),
+        provider: profile.provider,
+        provider_user_id: profile.provider_user_id,
+        email: profile.email,
+        name: profile.name,
+        event_type: "login",
+        redirect_path: verifiedState.redirectPath,
+        ip_address: req.ip,
+        user_agent: req.get("user-agent") || "",
+      });
+    } catch (dbError) {
+      console.error("Auth DB persistence failed:", dbError.message);
+      if (requireDb) {
+        clearSessionCookie(res);
+        return res.redirect(`${getFrontendUrl()}/login?auth=login&error=db_unavailable`);
+      }
+    }
 
     setSessionCookie(res, profile);
     return res.redirect(`${getFrontendUrl()}${getSafeRedirectPath(verifiedState.redirectPath)}`);
@@ -83,7 +91,7 @@ router.post("/logout", async (req, res) => {
 
     if (session) {
       try {
-        await snowflakeService.insertAuthEvent({
+        await mongoService.insertAuthEvent({
           id: crypto.randomUUID(),
           provider: session.provider,
           provider_user_id: session.sub,
@@ -108,3 +116,4 @@ router.post("/logout", async (req, res) => {
 });
 
 module.exports = router;
+

@@ -11,7 +11,7 @@ async function runTests() {
     console.log("Health check passed");
     console.log("  Status:", health.data.status);
     console.log("  Solana:", health.data.solana.connected ? "Connected" : "Disconnected");
-    console.log("  Snowflake:", health.data.snowflake.connected ? "Connected" : "Disconnected");
+    console.log("  MongoDB:", health.data.database.connected ? "Connected" : "Disconnected");
     console.log();
 
     console.log("2. Testing property registration...");
@@ -60,3 +60,4 @@ async function runTests() {
 }
 
 runTests();
+
