@@ -231,6 +231,15 @@ class MongoDBService {
     return db.collection("property_analytics").findOne({ ID: propertyId });
   }
 
+  async findPropertyByAddress(address) {
+    const db = await this.getDb();
+    if (!db) return null;
+    const safe = String(address || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return db.collection("property_analytics").findOne({
+      PROPERTY_ADDRESS: { $regex: `^${safe}$`, $options: "i" },
+    });
+  }
+
   async updatePropertyOwner(propertyId, { newOwnerName, newOwnerEmail, previousOwnerName, txSignature }) {
     const db = await this.getDb();
     if (!db) return;

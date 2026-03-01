@@ -153,6 +153,14 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
       });
     }
 
+    const existing = await mongoService.findPropertyByAddress(propertyAddress);
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        error: 'Property already exists. This address is already registered on the blockchain.',
+      });
+    }
+
     const deedHash = hashFile(req.file.buffer);
     const propertyId = crypto.randomUUID().replace(/-/g, ""); // 32-char compact UUID fits Solana's 32-byte seed limit
     const ownerId = req.user.sub || req.user.email;
