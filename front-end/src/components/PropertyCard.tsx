@@ -14,9 +14,14 @@ const riskStyles: Record<Property["fraudRisk"], string> = {
 interface PropertyCardProps {
   property: Property;
   onTransfer?: (updated: Property) => void;
+  canTransfer?: boolean;
 }
 
-export default function PropertyCard({ property: initialProperty, onTransfer }: PropertyCardProps) {
+export default function PropertyCard({
+  property: initialProperty,
+  onTransfer,
+  canTransfer = false,
+}: PropertyCardProps) {
   const [property, setProperty] = useState(initialProperty);
   const [showTransfer, setShowTransfer] = useState(false);
 
@@ -84,18 +89,20 @@ export default function PropertyCard({ property: initialProperty, onTransfer }: 
             <ExternalLink className="h-4 w-4" />
           </a>
 
-          <button
-            type="button"
-            onClick={() => setShowTransfer(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200/35 px-3 py-2 text-sm font-medium text-emerald-50 hover:bg-white/10"
-          >
-            Transfer
-            <ArrowRightLeft className="h-4 w-4" />
-          </button>
+          {canTransfer && (
+            <button
+              type="button"
+              onClick={() => setShowTransfer(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-200/35 px-3 py-2 text-sm font-medium text-emerald-50 hover:bg-white/10"
+            >
+              Transfer
+              <ArrowRightLeft className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </article>
 
-      {showTransfer && (
+      {canTransfer && showTransfer && (
         <TransferModal
           property={property}
           onClose={() => setShowTransfer(false)}

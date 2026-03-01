@@ -147,7 +147,7 @@ export default function MyPropertiesPage() {
             className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
           >
             {filteredItems.map((property) => (
-              <PropertyCard key={property.id} property={property} />
+              <PropertyCard key={property.id} property={property} canTransfer />
             ))}
           </motion.div>
         )}
