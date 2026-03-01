@@ -120,17 +120,8 @@ app.listen(PORT, async () => {
     console.error('✗ Solana connection failed:', error.message);
   }
 
-  // Test MongoDB connection (optional unless explicitly required)
-  if (process.env.MONGODB_REQUIRED === "true") {
-    try {
-      await snowflakeService.connect();
-      console.log("MongoDB connected");
-    } catch (error) {
-      console.error("MongoDB connection failed:", error.message);
-    }
-  } else {
-    console.log("MongoDB optional mode enabled (set MONGODB_REQUIRED=true to enforce).");
-  }
+  // MongoDB connection is lazy. It will connect on first DB-backed request.
+  console.log("MongoDB connection deferred until first DB operation.");
 
   console.log('\n✅ Backend ready!\n');
 });
