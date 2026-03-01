@@ -4,12 +4,17 @@ const {
   Transaction,
   TransactionInstruction,
   sendAndConfirmTransaction,
+  Connection,
 } = require("@solana/web3.js");
 const { BN } = require("@coral-xyz/anchor");
-const { getProgram, connection, getWallet } = require("../config/blockchain");
+const { getProgram, getWallet } = require("../config/blockchain");
 
 // SPL Memo program — pre-deployed on every Solana cluster (devnet, mainnet, testnet)
 const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
+
+// Reliable devnet connection used exclusively for the Memo fallback
+// so it never breaks if SOLANA_RPC is misconfigured
+const DEVNET_CONNECTION = new Connection("https://api.devnet.solana.com", "confirmed");
 
 class SolanaService {
   constructor() {
@@ -198,9 +203,9 @@ class SolanaService {
     });
 
     const tx = new Transaction().add(instruction);
-    const sig = await sendAndConfirmTransaction(connection, tx, [keypair]);
+    const sig = await sendAndConfirmTransaction(DEVNET_CONNECTION, tx, [keypair]);
 
-    const cluster = (process.env.SOLANA_RPC || "").includes("devnet") ? "devnet" : "mainnet-beta";
+    const cluster = "devnet";
     console.log("Memo tx recorded on-chain:", sig);
 
     return {
