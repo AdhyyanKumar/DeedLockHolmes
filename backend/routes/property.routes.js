@@ -107,19 +107,14 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
       history
     );
 
-    let blockchainResult = { txSig: null, propertyPda: null, explorerUrl: null };
-    try {
-      blockchainResult = await solanaService.registerOnChain({
-        propertyId,
-        address: propertyAddress,
-        ownerId,
-        ownerName,
-        deedHash,
-        salePrice,
-      });
-    } catch (chainErr) {
-      console.warn('On-chain registration skipped (program unavailable):', chainErr.message);
-    }
+    const blockchainResult = await solanaService.registerOnChain({
+      propertyId,
+      address: propertyAddress,
+      ownerId,
+      ownerName,
+      deedHash,
+      salePrice,
+    });
 
     await mongoService.storePropertyRecord({
       propertyId,
