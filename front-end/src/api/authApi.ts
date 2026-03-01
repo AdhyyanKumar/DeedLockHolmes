@@ -44,7 +44,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 }
 
 export async function logoutUser() {
-  await apiFetch<{ ok: boolean }>("/auth/logout", {
-    method: "POST",
-  });
+  try {
+    await apiFetch<{ ok: boolean }>("/auth/logout", {
+      method: "POST",
+    });
+  } catch {
+    // Ignore backend failures so UI can still perform local logout.
+  }
 }

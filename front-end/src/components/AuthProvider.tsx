@@ -47,8 +47,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   async function logout() {
-    await logoutUser();
-    setUserState(null);
+    try {
+      await logoutUser();
+    } catch {
+      // Clear local auth state even if backend logout call fails.
+    } finally {
+      setUserState(null);
+    }
   }
 
   const value = useMemo(
