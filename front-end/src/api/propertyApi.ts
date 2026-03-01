@@ -62,6 +62,26 @@ export async function getAllProperties(): Promise<Property[]> {
   return payload.items ?? payload.data ?? [];
 }
 
+export async function transferProperty(
+  propertyId: string,
+  buyerName: string,
+  buyerEmail: string,
+  salePrice: number,
+): Promise<{ status: "success" | "error"; property?: Property; error?: string }> {
+  const response = await fetch(`${API_BASE_URL}/properties/${propertyId}/transfer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ buyerName, buyerEmail, salePrice }),
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    return { status: "error", error: payload?.error || "Transfer failed." };
+  }
+  return { status: "success", property: payload?.property as Property };
+}
+
 export async function getMyProperties(): Promise<Property[]> {
   const response = await fetch(`${API_BASE_URL}/properties/mine`, {
     credentials: "include",

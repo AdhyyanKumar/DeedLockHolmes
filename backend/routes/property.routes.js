@@ -269,6 +269,86 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
   }
 });
 
+// POST /api/properties/:id/transfer - Transfer property to new owner
+router.post('/:id/transfer', requireAuth, async (req, res) => {
+  try {
+    const propertyId = req.params.id;
+    const { buyerName, buyerEmail, salePrice } = req.body;
+
+    if (!buyerName || !buyerEmail) {
+      return res.status(400).json({ success: false, error: 'Buyer name and email are required.' });
+    }
+
+    const existing = await mongoService.findPropertyAnalyticsById(propertyId);
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Property not found.' });
+    }
+
+    const isOwner =
+      existing.REGISTERED_BY_EMAIL === req.user.email ||
+      existing.REGISTERED_BY_PROVIDER_USER_ID === req.user.sub;
+
+    if (!isOwner) {
+      return res.status(403).json({ success: false, error: 'You do not own this property.' });
+    }
+
+    const newSalePrice = Math.max(1, Number(salePrice) || 1);
+    const previousOwnerName = existing.OWNER_NAME;
+
+    const blockchainResult = await solanaService.transferOnChain({
+      propertyId,
+      newOwnerId: buyerEmail,
+      newOwnerName: buyerName,
+      newDeedHash: existing.DEED_HASH || 'transfer',
+      newSalePrice,
+      previousOwnerName,
+    });
+
+    await mongoService.updatePropertyOwner(propertyId, {
+      newOwnerName: buyerName,
+      newOwnerEmail: buyerEmail,
+      previousOwnerName,
+      txSignature: blockchainResult.txSig,
+    });
+
+    await mongoService.storePropertyRecord({
+      propertyId,
+      address: existing.PROPERTY_ADDRESS,
+      ownerId: buyerEmail,
+      ownerName: buyerName,
+      deedHash: existing.DEED_HASH || 'transfer',
+      salePrice: newSalePrice,
+      transactionSignature: blockchainResult.txSig,
+      timestamp: Date.now(),
+    });
+
+    const transferCount = (Number(existing.TRANSFER_COUNT) || 0) + 1;
+
+    res.json({
+      success: true,
+      property: {
+        id: propertyId,
+        address: existing.PROPERTY_ADDRESS,
+        owner: buyerName,
+        previousOwner: previousOwnerName,
+        confidenceScore: Number(existing.GEMINI_CONFIDENCE || 0),
+        fraudRisk:
+          Number(existing.FRAUD_RISK || 0) >= 80 ? 'High' :
+          Number(existing.FRAUD_RISK || 0) >= 50 ? 'Medium' : 'Low',
+        timestamp: new Date().toISOString(),
+        accountAddress: blockchainResult.propertyPda || existing.PROPERTY_PDA || null,
+        explorerUrl: blockchainResult.explorerUrl,
+        transferCount,
+      },
+      blockchain: blockchainResult,
+      message: 'Property transferred successfully',
+    });
+  } catch (error) {
+    console.error('Transfer error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/properties/:id/analyze - Get AI analysis
 router.get('/:id/analyze', async (req, res) => {
   try {

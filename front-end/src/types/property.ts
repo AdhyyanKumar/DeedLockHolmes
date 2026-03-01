@@ -10,6 +10,7 @@ export interface Property {
   accountAddress: string | null;
   explorerUrl: string | null;
   transferCount?: number;
+  previousOwner?: string | null;
   analysis?: string | null;
   factors?: string[];
   recommendation?: string | null;

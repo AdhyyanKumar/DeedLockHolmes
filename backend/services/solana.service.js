@@ -215,6 +215,53 @@ class SolanaService {
     };
   }
 
+  async transferOnChain({ propertyId, newOwnerId, newOwnerName, newDeedHash, newSalePrice, previousOwnerName }) {
+    try {
+      const program = this.getProgramInstance();
+      const authority = program.provider.wallet.publicKey;
+      const [propertyPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("property"), Buffer.from(propertyId)],
+        program.programId
+      );
+
+      const txSig = await program.methods
+        .transferProperty(newOwnerId, newOwnerName, newDeedHash, new BN(newSalePrice))
+        .accounts({ property: propertyPda, authority })
+        .rpc();
+
+      return {
+        txSig,
+        propertyPda: propertyPda.toBase58(),
+        explorerUrl: `https://explorer.solana.com/tx/${txSig}?cluster=devnet`,
+      };
+    } catch (programErr) {
+      console.warn("Transfer via custom program failed, using Memo fallback:", programErr.message.slice(0, 80));
+      const wallet = getWallet();
+      const keypair = wallet.payer;
+      const memoText = JSON.stringify({
+        app: "DeedLockHolmes",
+        event: "transfer",
+        propertyId: propertyId.slice(0, 16),
+        from: String(previousOwnerName || "").slice(0, 20),
+        to: String(newOwnerName || "").slice(0, 20),
+        ts: Date.now(),
+      });
+      const instruction = new TransactionInstruction({
+        keys: [{ pubkey: keypair.publicKey, isSigner: true, isWritable: false }],
+        programId: MEMO_PROGRAM_ID,
+        data: Buffer.from(memoText, "utf8"),
+      });
+      const tx = new Transaction().add(instruction);
+      const sig = await sendAndConfirmTransaction(DEVNET_CONNECTION, tx, [keypair]);
+      console.log("Transfer Memo tx:", sig);
+      return {
+        txSig: sig,
+        propertyPda: null,
+        explorerUrl: `https://explorer.solana.com/tx/${sig}?cluster=devnet`,
+      };
+    }
+  }
+
   async registerOnChain({ propertyId, address, ownerId, ownerName, deedHash, salePrice }) {
     try {
       const program = this.getProgramInstance();

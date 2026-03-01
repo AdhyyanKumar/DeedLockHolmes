@@ -225,6 +225,31 @@ class MongoDBService {
       .toArray();
   }
 
+  async findPropertyAnalyticsById(propertyId) {
+    const db = await this.getDb();
+    if (!db) return null;
+    return db.collection("property_analytics").findOne({ ID: propertyId });
+  }
+
+  async updatePropertyOwner(propertyId, { newOwnerName, newOwnerEmail, previousOwnerName, txSignature }) {
+    const db = await this.getDb();
+    if (!db) return;
+    await db.collection("property_analytics").updateOne(
+      { ID: propertyId },
+      {
+        $set: {
+          OWNER_NAME: newOwnerName,
+          REGISTERED_BY_EMAIL: newOwnerEmail,
+          REGISTERED_BY_NAME: newOwnerName,
+          PREVIOUS_OWNER_NAME: previousOwnerName,
+          TX_SIGNATURE: txSignature,
+          UPDATED_AT: new Date(),
+        },
+        $inc: { TRANSFER_COUNT: 1 },
+      }
+    );
+  }
+
   async searchProperties(searchTerm) {
     const db = await this.getDb();
     if (!db) return [];
