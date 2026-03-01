@@ -176,10 +176,6 @@ export default function Navbar() {
             <h2 className="text-xl font-semibold text-white">
               {modalMode === "signup" ? "Create Account" : "Login"}
             </h2>
-            <p className="mt-1 text-sm text-emerald-100/80">
-              Authenticate with Google. The backend exchanges the authorization code,
-              stores the user profile in MongoDB, and creates a secure session cookie.
-            </p>
 
             <div className="mt-6 flex gap-2">
               <button
