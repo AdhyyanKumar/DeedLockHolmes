@@ -1,29 +1,54 @@
 import { motion } from "framer-motion";
+import { useMemo } from "react";
 
 export default function InteractiveLandingLayer() {
-  const stars = Array.from({ length: 34 }).map((_, index) => {
-    const x = ((index * 11) % 94) + 3;
-    const y = ((index * 17) % 58) + 5;
-    return {
-      left: `${x}%`,
-      top: `${y}%`,
-      size: 2 + (index % 4),
-      delay: (index % 9) * 0.17,
+  const stars = useMemo(() => {
+    let seed = 872341;
+    const rand = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
     };
-  });
+
+    return Array.from({ length: 72 }).map((_, index) => {
+      const spreadBias = rand();
+      const left = 1 + rand() * 98;
+      const top = 3 + Math.pow(spreadBias, 0.8) * 66;
+      const size = 1 + rand() * 3.2;
+      const minOpacity = 0.15 + rand() * 0.25;
+      const maxOpacity = 0.65 + rand() * 0.35;
+      const twinkleScale = 1 + rand() * 0.4;
+      const duration = 1.8 + rand() * 3.1;
+      const delay = rand() * 2.8;
+
+      return {
+        id: index,
+        left: `${left}%`,
+        top: `${top}%`,
+        size,
+        minOpacity,
+        maxOpacity,
+        twinkleScale,
+        duration,
+        delay,
+      };
+    });
+  }, []);
 
   return (
     <div className="absolute inset-0 z-0" aria-hidden="true">
       <div className="absolute inset-0">
         <div className="scene-stars">
-          {stars.map((star, index) => (
+          {stars.map((star) => (
             <motion.span
-              key={`${star.left}-${star.top}-${index}`}
+              key={star.id}
               className="scene-star"
               style={{ left: star.left, top: star.top, width: star.size, height: star.size }}
-              animate={{ opacity: [0.2, 0.95, 0.3], scale: [1, 1.2, 1] }}
+              animate={{
+                opacity: [star.minOpacity, star.maxOpacity, star.minOpacity + 0.08],
+                scale: [1, star.twinkleScale, 1],
+              }}
               transition={{
-                duration: 2.8,
+                duration: star.duration,
                 repeat: Infinity,
                 ease: "easeInOut",
                 delay: star.delay,
