@@ -146,6 +146,7 @@ export default function Navbar() {
                         await logout();
                         setMenuOpen(false);
                         showToast("Logged out");
+                        navigate("/", { replace: true });
                       }}
                       className={[
                         "mt-2 w-full rounded-lg px-3 py-2 text-sm font-semibold",
@@ -201,14 +202,21 @@ export default function Navbar() {
       </header>
 
       {modalMode ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#061E17]/70 px-4 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#061E17]/70 px-4 backdrop-blur-sm"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeModal();
+            }
+          }}
+        >
           <div className="w-full max-w-md rounded-2xl border border-emerald-200/35 bg-[#114637]/92 p-6 text-emerald-50 shadow-card">
             <h2 className="text-xl font-semibold text-white">
               {modalMode === "signup" ? "Create Account" : "Login"}
             </h2>
             <p className="mt-1 text-sm text-emerald-100/80">
               Authenticate with Google. The backend exchanges the authorization code,
-              stores the user profile in Snowflake, and creates a secure session cookie.
+              stores the user profile in MongoDB, and creates a secure session cookie.
             </p>
 
             <div className="mt-6 flex gap-2">
