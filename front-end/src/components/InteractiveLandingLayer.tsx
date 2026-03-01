@@ -1,39 +1,6 @@
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
 export default function InteractiveLandingLayer() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mouseX = useMotionValue(0.5);
-  const mouseY = useMotionValue(0.5);
-  const sx = useSpring(mouseX, { stiffness: 180, damping: 26, mass: 0.45 });
-  const sy = useSpring(mouseY, { stiffness: 180, damping: 26, mass: 0.45 });
-  const glowX = useTransform(sx, [0, 1], ["8%", "92%"]);
-  const glowY = useTransform(sy, [0, 1], ["10%", "90%"]);
-
-  useEffect(() => {
-    function onPointerMove(event: PointerEvent) {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      const x = (event.clientX - rect.left) / rect.width;
-      const y = (event.clientY - rect.top) / rect.height;
-      mouseX.set(Math.min(1, Math.max(0, x)));
-      mouseY.set(Math.min(1, Math.max(0, y)));
-    }
-
-    function onPointerLeave() {
-      mouseX.set(0.5);
-      mouseY.set(0.5);
-    }
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerleave", onPointerLeave);
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerleave", onPointerLeave);
-    };
-  }, [mouseX, mouseY]);
-
   const stars = Array.from({ length: 34 }).map((_, index) => {
     const x = ((index * 11) % 94) + 3;
     const y = ((index * 17) % 58) + 5;
@@ -46,17 +13,7 @@ export default function InteractiveLandingLayer() {
   });
 
   return (
-    <div ref={containerRef} className="absolute inset-0 z-0" aria-hidden="true">
-      <motion.div
-        className="pointer-events-none absolute -inset-x-16 -inset-y-8 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(circle at var(--gx) var(--gy), rgba(251,191,36,0.24), rgba(251,191,36,0) 34%)",
-          ["--gx" as string]: glowX,
-          ["--gy" as string]: glowY,
-        }}
-      />
-
+    <div className="absolute inset-0 z-0" aria-hidden="true">
       <div className="absolute inset-0">
         <div className="scene-stars">
           {stars.map((star, index) => (

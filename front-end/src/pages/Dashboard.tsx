@@ -76,16 +76,16 @@ export default function DashboardPage() {
   }, [items, riskFilter, search, sortBy]);
 
   return (
-    <section className="relative min-h-[calc(100vh-6rem)] overflow-hidden bg-[#0F3B2E] px-4 py-12 sm:px-6 lg:px-8">
+    <section className="relative min-h-[calc(100vh-6rem)] overflow-hidden bg-[#000000] px-4 py-12 sm:px-6 lg:px-8">
       <div
-        className="pointer-events-none absolute inset-0 opacity-45"
+        className="pointer-events-none absolute inset-0 opacity-35"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(167,243,208,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(167,243,208,0.18) 1px, transparent 1px)",
+            "linear-gradient(rgba(110,231,183,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(110,231,183,0.08) 1px, transparent 1px)",
           backgroundSize: "72px 72px",
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(52,211,153,0.25),transparent_35%),radial-gradient(circle_at_80%_28%,rgba(16,185,129,0.2),transparent_38%),radial-gradient(circle_at_52%_82%,rgba(20,184,166,0.14),transparent_34%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(34,197,94,0.09),transparent_35%),radial-gradient(circle_at_80%_28%,rgba(20,184,166,0.06),transparent_38%),radial-gradient(circle_at_52%_82%,rgba(16,185,129,0.05),transparent_34%)]" />
 
       <div className="relative z-10 mx-auto max-w-7xl space-y-6">
         <div>

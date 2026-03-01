@@ -9,8 +9,8 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #111827;
-  background-color: #f8f6f1;
+  color: #e5e7eb;
+  background-color: #000000;
 }
 
 * {
@@ -20,8 +20,8 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: #f8f6f1;
-  color: #111827;
+  background: #000000;
+  color: #e5e7eb;
 }
 
 a {
@@ -35,7 +35,7 @@ a {
 
 .app-shell {
   min-height: 100vh;
-  background: #f8f6f1;
+  background: #000000;
 }
 
 .grid-stage {

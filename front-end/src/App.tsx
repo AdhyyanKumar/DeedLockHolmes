@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import GlobalSpotlight from "./components/GlobalSpotlight";
 import RequireAuth from "./components/RequireAuth";
 import RegisterPage from "./pages/Register";
 import DashboardPage from "./pages/Dashboard";
@@ -26,13 +27,14 @@ export default function App() {
     location.pathname === "/my-properties";
 
   return (
-    <div className="app-shell text-ink">
+    <div className="app-shell relative text-ink">
       <Navbar />
+      <GlobalSpotlight />
       <main
         className={
           isHeroRoute
-            ? "w-full"
-            : "mx-auto w-full max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8"
+            ? "relative z-10 w-full"
+            : "relative z-10 mx-auto w-full max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8"
         }
       >
         <AnimatePresence mode="wait">
