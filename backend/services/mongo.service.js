@@ -127,6 +127,7 @@ class MongoDBService {
       DEED_HASH: record.deed_hash,
       GEMINI_CONFIDENCE: record.gemini_confidence,
       FRAUD_RISK: record.fraud_risk,
+      SALE_PRICE: record.sale_price,
       TX_SIGNATURE: record.tx_signature,
       PROPERTY_PDA: record.property_pda,
       NOTES: record.notes,
@@ -240,7 +241,7 @@ class MongoDBService {
     });
   }
 
-  async updatePropertyOwner(propertyId, { newOwnerName, newOwnerEmail, previousOwnerName, txSignature }) {
+  async updatePropertyOwner(propertyId, { newOwnerName, newOwnerEmail, previousOwnerName, txSignature, newSalePrice }) {
     const db = await this.getDb();
     if (!db) return;
     await db.collection("property_analytics").updateOne(
@@ -251,6 +252,7 @@ class MongoDBService {
           REGISTERED_BY_EMAIL: newOwnerEmail,
           REGISTERED_BY_NAME: newOwnerName,
           PREVIOUS_OWNER_NAME: previousOwnerName,
+          SALE_PRICE: newSalePrice,
           TX_SIGNATURE: txSignature,
           UPDATED_AT: new Date(),
         },

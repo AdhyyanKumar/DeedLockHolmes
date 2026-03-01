@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { Property } from "../types/property";
 import { useAuth } from "./AuthProvider";
 import { copyToClipboard } from "../utils/clipboard";
-import { formatTimestamp, truncateMiddle } from "../utils/format";
+import { formatTimestamp, formatUsd, truncateMiddle } from "../utils/format";
 import TransferModal from "./TransferModal";
 
 const riskStyles: Record<Property["fraudRisk"], string> = {
@@ -51,7 +51,7 @@ export default function PropertyCard({
         <div className="mt-4 space-y-2 text-sm text-emerald-50/85">
           <p>Date: {formatTimestamp(property.timestamp)}</p>
           <p>Confidence: {property.confidenceScore}%</p>
-          <p>Transfer Count: {property.transferCount ?? 0}</p>
+          <p>Price: {formatUsd(property.salePrice)}</p>
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-2">

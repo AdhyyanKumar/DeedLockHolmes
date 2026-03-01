@@ -56,6 +56,7 @@ router.get('/', async (req, res) => {
       id: row.ID,
       address: row.PROPERTY_ADDRESS,
       owner: row.OWNER_NAME,
+      salePrice: Number(row.SALE_PRICE ?? 0),
       confidenceScore: Number(row.GEMINI_CONFIDENCE ?? 0),
       fraudRisk:
         Number(row.FRAUD_RISK ?? 0) >= 80
@@ -66,7 +67,7 @@ router.get('/', async (req, res) => {
       timestamp: new Date(row.CREATED_AT).toISOString(),
       accountAddress: row.PROPERTY_PDA,
       explorerUrl: `https://explorer.solana.com/tx/${row.TX_SIGNATURE}?cluster=devnet`,
-      transferCount: 0,
+      transferCount: Number(row.TRANSFER_COUNT ?? 0),
     }));
 
     res.json({ 
@@ -98,6 +99,7 @@ router.get('/mine', requireAuth, async (req, res) => {
       id: row.ID,
       address: row.PROPERTY_ADDRESS,
       owner: row.OWNER_NAME,
+      salePrice: Number(row.SALE_PRICE ?? 0),
       confidenceScore: Number(row.GEMINI_CONFIDENCE ?? 0),
       fraudRisk:
         Number(row.FRAUD_RISK ?? 0) >= 80
@@ -108,7 +110,7 @@ router.get('/mine', requireAuth, async (req, res) => {
       timestamp: new Date(row.CREATED_AT).toISOString(),
       accountAddress: row.PROPERTY_PDA,
       explorerUrl: `https://explorer.solana.com/tx/${row.TX_SIGNATURE}?cluster=devnet`,
-      transferCount: 0,
+      transferCount: Number(row.TRANSFER_COUNT ?? 0),
     }));
 
     res.json({
@@ -228,6 +230,7 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
       id: propertyId,
       property_address: propertyAddress,
       owner_name: ownerName,
+      sale_price: salePrice,
       deed_hash: deedHash,
       gemini_confidence: Math.max(0, 100 - Number(fraudAnalysis.riskScore || 0)),
       fraud_risk: Number(fraudAnalysis.riskScore || 0),
@@ -246,6 +249,7 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
         id: propertyId,
         address: propertyAddress,
         owner: ownerName,
+        salePrice,
         confidenceScore: Math.max(0, 100 - Number(fraudAnalysis.riskScore || 0)),
         fraudRisk:
           Number(fraudAnalysis.riskScore || 0) >= 80
@@ -318,6 +322,7 @@ router.post('/:id/transfer', requireAuth, async (req, res) => {
       newOwnerEmail: buyerEmail,
       previousOwnerName,
       txSignature: blockchainResult.txSig,
+      newSalePrice,
     });
 
     await mongoService.storePropertyRecord({
@@ -349,6 +354,7 @@ router.post('/:id/transfer', requireAuth, async (req, res) => {
         id: propertyId,
         address: existing.PROPERTY_ADDRESS,
         owner: buyerName,
+        salePrice: newSalePrice,
         previousOwner: previousOwnerName,
         confidenceScore: Number(existing.GEMINI_CONFIDENCE || 0),
         fraudRisk:

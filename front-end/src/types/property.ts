@@ -4,6 +4,7 @@ export interface Property {
   id: string;
   address: string;
   owner: string;
+  salePrice?: number | null;
   confidenceScore: number;
   fraudRisk: FraudRisk;
   timestamp: string;

@@ -14,3 +14,13 @@ export function truncateMiddle(value: string | null | undefined, head = 6, tail 
   if (value.length <= head + tail + 3) return value;
   return `${value.slice(0, head)}...${value.slice(-tail)}`;
 }
+
+export function formatUsd(value: number | null | undefined): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return "Not available";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
