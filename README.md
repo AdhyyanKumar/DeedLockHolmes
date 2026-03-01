@@ -1,6 +1,6 @@
 # DeedLock Holmes
 
-> AI-powered property deed registry on Solana — built at HenHacks 2025
+> AI-powered property deed registry on Solana — built at HenHacks 2026
 
 DeedLock Holmes makes property deed registration trustworthy by combining AI-based fraud screening, Google-authenticated user actions, and immutable blockchain-backed records. Every deed is analyzed by Gemini AI before it ever touches the blockchain.
 
@@ -10,9 +10,9 @@ DeedLock Holmes makes property deed registration trustworthy by combining AI-bas
 
 | Name | Role |
 |---|---|
-| Adhyyan Kumar | Blockchain & Backend |
+| Adhyyan Kumar | Frontend and Integration |
 | Ansh Mathur | Backend & Database |
-| Yashovardhan Saraswat | Frontend & Integration |
+| Yashovardhan Saraswat | Backend and Blockchain |
 
 ---
 
@@ -241,4 +241,4 @@ npm run dev
 
 ## License
 
-MIT — built for HenHacks 2025.
+MIT — built for HenHacks 2026.
