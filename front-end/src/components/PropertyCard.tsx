@@ -1,6 +1,7 @@
 import { Copy, ExternalLink, ArrowRightLeft } from "lucide-react";
 import { useState } from "react";
 import type { Property } from "../types/property";
+import { useAuth } from "./AuthProvider";
 import { copyToClipboard } from "../utils/clipboard";
 import { formatTimestamp, truncateMiddle } from "../utils/format";
 import TransferModal from "./TransferModal";
@@ -22,8 +23,10 @@ export default function PropertyCard({
   onTransfer,
   canTransfer = false,
 }: PropertyCardProps) {
+  const { isAuthenticated } = useAuth();
   const [property, setProperty] = useState(initialProperty);
   const [showTransfer, setShowTransfer] = useState(false);
+  const transferEnabled = canTransfer && isAuthenticated;
 
   const accountAddress = property.accountAddress ?? "";
   const explorerUrl = property.explorerUrl ?? "";
@@ -89,7 +92,7 @@ export default function PropertyCard({
             <ExternalLink className="h-4 w-4" />
           </a>
 
-          {canTransfer && (
+          {transferEnabled && (
             <button
               type="button"
               onClick={() => setShowTransfer(true)}
@@ -102,7 +105,7 @@ export default function PropertyCard({
         </div>
       </article>
 
-      {canTransfer && showTransfer && (
+      {transferEnabled && showTransfer && (
         <TransferModal
           property={property}
           onClose={() => setShowTransfer(false)}
