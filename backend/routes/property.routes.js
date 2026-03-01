@@ -5,6 +5,7 @@ const multer = require("multer");
 const solanaService = require('../services/solana.service');
 const mongoService = require('../services/mongo.service');
 const geminiService = require('../services/gemini.service');
+const emailService = require('../services/email.service');
 const { requireAuth } = require("../auth");
 const { hashFile } = require("../utils/hash");
 
@@ -323,6 +324,16 @@ router.post('/:id/transfer', requireAuth, async (req, res) => {
     });
 
     const transferCount = (Number(existing.TRANSFER_COUNT) || 0) + 1;
+
+    // Send confirmation email to buyer (non-fatal)
+    emailService.sendTransferConfirmation({
+      buyerEmail,
+      buyerName,
+      propertyAddress: existing.PROPERTY_ADDRESS,
+      previousOwner: previousOwnerName,
+      explorerUrl: blockchainResult.explorerUrl,
+      transferCount,
+    }).catch((err) => console.error("Email send failed (non-fatal):", err.message));
 
     res.json({
       success: true,
