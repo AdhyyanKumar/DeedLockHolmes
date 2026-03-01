@@ -31,7 +31,7 @@ export default function PropertyCard({ property: initialProperty, onTransfer }: 
 
   return (
     <>
-      <article className="rounded-2.5xl border border-emerald-200/30 bg-white/10 p-5 shadow-card backdrop-blur">
+      <article className="rounded-2.5xl border border-emerald-200/30 bg-white/10 p-5 shadow-card backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300/75 hover:shadow-[0_0_0_1px_rgba(45,212,191,0.35),0_0_28px_rgba(16,185,129,0.22)]">
         <h3 className="text-base font-semibold leading-snug text-white">{property.address}</h3>
         <p className="mt-1 text-sm text-emerald-50/85">Owner: {property.owner}</p>
         {property.previousOwner && (

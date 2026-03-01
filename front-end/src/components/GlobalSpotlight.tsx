@@ -33,10 +33,10 @@ export default function GlobalSpotlight() {
   return (
     <motion.div
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-[30] mix-blend-screen blur-2xl"
+      className="pointer-events-none fixed inset-0 z-[5] mix-blend-screen blur-2xl"
       style={{
         background:
-          "radial-gradient(circle at var(--gx) var(--gy), rgba(16,185,129,0.18), rgba(16,185,129,0) 14%)",
+          "radial-gradient(circle at var(--gx) var(--gy), rgba(16,185,129,0.16), rgba(16,185,129,0) 14%)",
         ["--gx" as string]: glowX,
         ["--gy" as string]: glowY,
       }}

@@ -45,7 +45,7 @@ export default function TransferModal({ property, onClose, onSuccess }: Transfer
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-md rounded-2xl border border-emerald-200/30 bg-[#000000] p-6 shadow-2xl">
+      <div className="relative w-full max-w-md rounded-2xl border border-emerald-200/30 bg-[#000000] p-6 shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300/75 hover:shadow-[0_0_0_1px_rgba(45,212,191,0.35),0_0_30px_rgba(16,185,129,0.24)]">
         <button
           type="button"
           onClick={onClose}

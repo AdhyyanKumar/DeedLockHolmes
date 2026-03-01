@@ -18,7 +18,7 @@ export default function VerificationSummary({ property }: VerificationSummaryPro
   const explorerUrl = property.explorerUrl ?? "";
 
   return (
-    <div className="rounded-2.5xl border border-emerald-200/30 bg-white/10 p-6 shadow-card backdrop-blur">
+    <div className="rounded-2.5xl border border-emerald-200/30 bg-white/10 p-6 shadow-card backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300/75 hover:shadow-[0_0_0_1px_rgba(45,212,191,0.35),0_0_28px_rgba(16,185,129,0.22)]">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-white">Verification Summary</h3>

@@ -69,7 +69,7 @@ export default function LandingPage() {
                 to="/dashboard"
                 className="rounded-full border-2 border-emerald-100/80 bg-transparent px-8 py-3 text-base font-semibold text-white transition hover:bg-white/10"
               >
-                Go to Dashboard
+                Browse Properties
               </Link>
             </div>
           ) : (

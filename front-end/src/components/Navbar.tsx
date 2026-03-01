@@ -91,7 +91,7 @@ export default function Navbar() {
                 </NavLink>
               ) : null}
               <NavLink to="/dashboard" className={({ isActive }) => linkClass(isActive)}>
-                Dashboard
+                Browse Properties
               </NavLink>
               {isAuthenticated ? (
                 <NavLink to="/my-properties" className={({ isActive }) => linkClass(isActive)}>
@@ -200,4 +200,3 @@ export default function Navbar() {
     </>
   );
 }
-
