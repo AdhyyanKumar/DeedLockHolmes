@@ -39,12 +39,8 @@
                 ]
               },
               {
-                "kind": "account",
-                "path": "authority"
-              },
-              {
                 "kind": "arg",
-                "path": "deed_hash"
+                "path": "property_id"
               }
             ]
           }
@@ -61,7 +57,15 @@
       ],
       "args": [
         {
-          "name": "property_address",
+          "name": "property_id",
+          "type": "string"
+        },
+        {
+          "name": "address",
+          "type": "string"
+        },
+        {
+          "name": "owner_id",
           "type": "string"
         },
         {
@@ -73,12 +77,74 @@
           "type": "string"
         },
         {
-          "name": "gemini_confidence",
-          "type": "u8"
+          "name": "sale_price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "transfer_property",
+      "discriminator": [
+        129,
+        50,
+        16,
+        30,
+        169,
+        153,
+        234,
+        239
+      ],
+      "accounts": [
+        {
+          "name": "property",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  101,
+                  114,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "property.property_id",
+                "account": "Property"
+              }
+            ]
+          }
         },
         {
-          "name": "fraud_risk",
-          "type": "u8"
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "property"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_owner_id",
+          "type": "string"
+        },
+        {
+          "name": "new_owner_name",
+          "type": "string"
+        },
+        {
+          "name": "new_deed_hash",
+          "type": "string"
+        },
+        {
+          "name": "new_sale_price",
+          "type": "u64"
         }
       ]
     }
@@ -101,28 +167,33 @@
   "errors": [
     {
       "code": 6000,
-      "name": "InvalidDeedHash",
-      "msg": "Deed hash must be exactly 64 hex characters."
+      "name": "PropertyIdTooLong",
+      "msg": "Property ID exceeds maximum length."
     },
     {
       "code": 6001,
-      "name": "InvalidConfidence",
-      "msg": "Gemini confidence must be between 0 and 100."
-    },
-    {
-      "code": 6002,
-      "name": "InvalidFraudRisk",
-      "msg": "Fraud risk must be between 0 and 100."
-    },
-    {
-      "code": 6003,
       "name": "AddressTooLong",
       "msg": "Property address exceeds maximum length."
     },
     {
-      "code": 6004,
+      "code": 6002,
+      "name": "OwnerIdTooLong",
+      "msg": "Owner ID exceeds maximum length."
+    },
+    {
+      "code": 6003,
       "name": "OwnerNameTooLong",
       "msg": "Owner name exceeds maximum length."
+    },
+    {
+      "code": 6004,
+      "name": "DeedHashTooLong",
+      "msg": "Deed hash exceeds maximum length."
+    },
+    {
+      "code": 6005,
+      "name": "InvalidSalePrice",
+      "msg": "Sale price must be greater than zero."
     }
   ],
   "types": [
@@ -136,7 +207,15 @@
             "type": "pubkey"
           },
           {
-            "name": "property_address",
+            "name": "property_id",
+            "type": "string"
+          },
+          {
+            "name": "address",
+            "type": "string"
+          },
+          {
+            "name": "owner_id",
             "type": "string"
           },
           {
@@ -148,16 +227,20 @@
             "type": "string"
           },
           {
-            "name": "gemini_confidence",
-            "type": "u8"
-          },
-          {
-            "name": "fraud_risk",
-            "type": "u8"
-          },
-          {
-            "name": "registered_at",
+            "name": "timestamp",
             "type": "i64"
+          },
+          {
+            "name": "sale_price",
+            "type": "u64"
+          },
+          {
+            "name": "previous_owner",
+            "type": "string"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
           }
         ]
       }

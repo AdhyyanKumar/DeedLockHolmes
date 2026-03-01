@@ -1,7 +1,5 @@
 import type { Property, RegisterPropertyResult } from "../types/property";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://deed-lock-holmes.vercel.app/api";
+import { API_BASE_URL } from "./baseUrl";
 
 export async function registerProperty(
   file: File,

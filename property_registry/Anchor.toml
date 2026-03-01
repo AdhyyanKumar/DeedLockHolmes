@@ -8,6 +8,9 @@ skip-lint = false
 [programs.devnet]
 property_registry = "5GGuCnwt8Lk3c9ZJMKLjQYAuD5wwihP73RKNuEFmTB7G"
 
+[programs.testnet]
+property_registry = "5GGuCnwt8Lk3c9ZJMKLjQYAuD5wwihP73RKNuEFmTB7G"
+
 [programs.localnet]
 property_registry = "5GGuCnwt8Lk3c9ZJMKLjQYAuD5wwihP73RKNuEFmTB7G"
 
@@ -15,7 +18,7 @@ property_registry = "5GGuCnwt8Lk3c9ZJMKLjQYAuD5wwihP73RKNuEFmTB7G"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

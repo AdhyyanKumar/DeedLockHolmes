@@ -10,6 +10,20 @@ const { hashFile } = require("../utils/hash");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+function mapRegistrationError(error) {
+  const message = String(error?.message || "Registration failed.");
+  if (/api[_\s-]*key[_\s-]*invalid|api key not valid/i.test(message)) {
+    return "AI verification is misconfigured on the backend (invalid Gemini key).";
+  }
+  if (/resource_exhausted|quota|too many requests|429/i.test(message)) {
+    return "AI verification is temporarily unavailable due to provider quota limits. Please retry shortly.";
+  }
+  if (/fetch failed|timed out|network/i.test(message)) {
+    return "AI verification service is temporarily unreachable. Please retry.";
+  }
+  return message;
+}
+
 // GET /api/properties - Get all properties
 router.get('/', async (req, res) => {
   try {
@@ -77,15 +91,21 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
     const propertyId = crypto.randomUUID();
     const ownerId = req.user.sub || req.user.email;
     const salePrice = 0;
+    const history = await snowflakeService.getTransactionHistory(propertyId).catch(() => []);
 
     console.log('Registering property:', propertyId);
 
-    const fraudAnalysis = await geminiService.detectFraudRisk({
-      propertyId,
-      address: propertyAddress,
-      ownerName,
-      salePrice
-    });
+    const fraudAnalysis = await geminiService.analyzeDeedForFraud(
+      req.file.buffer,
+      {
+        propertyId,
+        address: propertyAddress,
+        ownerName,
+        salePrice,
+        deedHash,
+      },
+      history
+    );
 
     const blockchainResult = await solanaService.registerOnChain({
       deedHash,
@@ -149,14 +169,17 @@ router.post('/register', requireAuth, upload.single("deed"), async (req, res) =>
       },
       blockchain: blockchainResult,
       fraudAnalysis,
+      deedAnalysisMethod: fraudAnalysis.method,
+      deedExtraction: fraudAnalysis.extraction || null,
       message: 'Property registered successfully'
     });
 
   } catch (error) {
     console.error('Registration error:', error);
+    const safeMessage = mapRegistrationError(error);
     res.status(500).json({ 
       success: false, 
-      error: error.message 
+      error: safeMessage
     });
   }
 });

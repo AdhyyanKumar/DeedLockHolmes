@@ -1,212 +1,620 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const pdfParse = require("pdf-parse");
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const GEMINI_MODEL_FLASH = process.env.GEMINI_MODEL_FLASH || "gemini-2.5-flash";
+const GEMINI_MODEL_PRO = process.env.GEMINI_MODEL_PRO || "gemini-2.5-pro";
+const GEMINI_MODEL_FLASH_FALLBACKS = (
+  process.env.GEMINI_MODEL_FLASH_FALLBACKS ||
+  "gemini-2.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-1.5-flash-002"
+)
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
+const GEMINI_MODEL_PRO_FALLBACKS = (
+  process.env.GEMINI_MODEL_PRO_FALLBACKS ||
+  "gemini-2.5-pro,gemini-1.5-pro-002,gemini-1.5-pro-latest"
+)
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT || 30000);
+const GEMINI_MAX_DEED_TEXT_CHARS = Number(process.env.GEMINI_MAX_DEED_CHARS || 12000);
+const STRICT_GEMINI = process.env.STRICT_GEMINI === "true";
+
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+
+function clampNumber(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(n)));
+}
+
+function riskLevelFromScore(score) {
+  if (score <= 30) return "LOW";
+  if (score <= 70) return "MEDIUM";
+  return "HIGH";
+}
+
+function normalizeText(text, limit = GEMINI_MAX_DEED_TEXT_CHARS) {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, limit);
+}
+
+function safeLocaleNumber(value) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return "0";
+  return n.toLocaleString();
+}
+
+function withTimeout(promise, timeoutMs) {
+  let timeoutId;
+  const timer = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`Gemini timed out in ${timeoutMs}ms`)), timeoutMs);
+  });
+  return Promise.race([promise, timer]).finally(() => clearTimeout(timeoutId));
+}
+
+function parseJsonCandidate(rawText) {
+  const text = String(rawText || "").trim();
+  if (!text) return null;
+
+  const noFence = text.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  const start = noFence.indexOf("{");
+  const end = noFence.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+
+  try {
+    return JSON.parse(noFence.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+}
 
 class GeminiService {
-  
   constructor() {
-    this.model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash'
-    });
+    this.genAI = genAI;
+    this.flashModelCandidates = [GEMINI_MODEL_FLASH, ...GEMINI_MODEL_FLASH_FALLBACKS].filter(
+      (v, i, arr) => arr.indexOf(v) === i
+    );
+    this.proModelCandidates = [GEMINI_MODEL_PRO, ...GEMINI_MODEL_PRO_FALLBACKS].filter(
+      (v, i, arr) => arr.indexOf(v) === i
+    );
+    this.lastWorkingModel = {
+      flash: this.flashModelCandidates[0] || null,
+      pro: this.proModelCandidates[0] || null,
+    };
   }
 
-  /**
-   * Analyze property with transaction history
-   */
+  getModel(preferPro = false) {
+    if (!this.genAI) return null;
+    const key = preferPro ? "pro" : "flash";
+    const modelName = this.lastWorkingModel[key];
+    if (!modelName) return null;
+    return this.genAI.getGenerativeModel({ model: modelName });
+  }
+
+  shouldTryNextModel(error) {
+    const msg = String(error?.message || "").toLowerCase();
+    return (
+      msg.includes("not found") ||
+      msg.includes("404") ||
+      msg.includes("not supported for generatecontent") ||
+      msg.includes("unsupported model")
+    );
+  }
+
+  async generateContentWithFallback(content, preferPro = false) {
+    if (!this.genAI) {
+      throw new Error("Gemini model is not configured");
+    }
+
+    const candidates = preferPro ? this.proModelCandidates : this.flashModelCandidates;
+    const key = preferPro ? "pro" : "flash";
+    const ordered = [
+      this.lastWorkingModel[key],
+      ...candidates.filter((name) => name !== this.lastWorkingModel[key]),
+    ].filter(Boolean);
+
+    let lastError = null;
+    for (const modelName of ordered) {
+      try {
+        const model = this.genAI.getGenerativeModel({ model: modelName });
+        const result = await withTimeout(model.generateContent(content), GEMINI_TIMEOUT_MS);
+        this.lastWorkingModel[key] = modelName;
+        return { result, modelName };
+      } catch (error) {
+        lastError = error;
+        if (!this.shouldTryNextModel(error)) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError || new Error("No working Gemini model found");
+  }
+
+  parseFraudAnalysis(analysisText) {
+    const raw = String(analysisText || "");
+    const jsonCandidate = parseJsonCandidate(raw);
+    if (jsonCandidate && typeof jsonCandidate === "object") {
+      const score = clampNumber(jsonCandidate.riskScore, 0, 100, 50);
+      return {
+        score,
+        level: riskLevelFromScore(score),
+        confidence: clampNumber(jsonCandidate.confidence, 0, 100, 75),
+        recommendation: String(jsonCandidate.recommendation || "REVIEW REQUIRED").toUpperCase(),
+        factors: Array.isArray(jsonCandidate.factors)
+          ? jsonCandidate.factors.map((f) => String(f)).slice(0, 8)
+          : [],
+      };
+    }
+
+    const scoreMatch =
+      raw.match(/Risk Score:\s*(\d{1,3})/i) || raw.match(/"riskScore"\s*:\s*(\d{1,3})/i);
+    const score = clampNumber(scoreMatch?.[1], 0, 100, 50);
+
+    const levelMatch =
+      raw.match(/Risk Level:\s*(LOW|MEDIUM|HIGH)/i) ||
+      raw.match(/"riskLevel"\s*:\s*"(LOW|MEDIUM|HIGH)"/i);
+    const level = levelMatch ? String(levelMatch[1]).toUpperCase() : riskLevelFromScore(score);
+
+    const confidenceMatch =
+      raw.match(/Confidence:\s*(\d{1,3})%/i) ||
+      raw.match(/"confidence"\s*:\s*(\d{1,3})/i);
+    const confidence = clampNumber(confidenceMatch?.[1], 0, 100, 75);
+
+    const recommendationMatch = raw.match(
+      /RECOMMENDATION:\s*\n?\s*(APPROVE|REVIEW REQUIRED|REJECT)/i
+    );
+    const recommendation = recommendationMatch
+      ? recommendationMatch[1].toUpperCase()
+      : level === "HIGH"
+        ? "REVIEW REQUIRED"
+        : "APPROVE";
+
+    const findingsSection = raw.match(
+      /KEY FINDINGS:\s*\n([\s\S]*?)(?=\n\n|DETAILED ANALYSIS|RECOMMENDATION|$)/i
+    );
+    const factors = findingsSection
+      ? findingsSection[1]
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line.startsWith("•"))
+          .map((line) => line.replace(/^•\s*/, ""))
+      : [];
+
+    return { score, level, confidence, recommendation, factors };
+  }
+
+  buildFraudAnalysisPrompt(deedText, propertyData = {}, transactionHistory = []) {
+    const normalizedDeedText = normalizeText(deedText);
+    const historyText = transactionHistory.length
+      ? transactionHistory
+          .map(
+            (t) =>
+              `- ${new Date(t.CREATED_AT || t.created_at || Date.now()).toLocaleDateString()}: ` +
+              `$${safeLocaleNumber(t.SALE_PRICE || t.sale_price || 0)} to ${t.OWNER_NAME || t.owner_name || "Unknown"}`
+          )
+          .join("\n")
+      : "No previous transaction history available.";
+
+    return `You are an expert real estate fraud investigator analyzing a property deed.
+
+DEED DOCUMENT TEXT:
+"""
+${normalizedDeedText || "[NO_TEXT_EXTRACTED]"}
+"""
+
+PROPERTY INFORMATION:
+- Property ID: ${propertyData.propertyId || "N/A"}
+- Address: ${propertyData.address || "N/A"}
+- Current Owner: ${propertyData.ownerName || "N/A"}
+- Sale Price: $${safeLocaleNumber(propertyData.salePrice)}
+- Deed Hash: ${propertyData.deedHash || "N/A"}
+
+PREVIOUS TRANSACTIONS:
+${historyText}
+
+ANALYSIS TASK:
+Perform fraud risk assessment across:
+1. Price anomalies
+2. Document quality
+3. Party information quality
+4. Transaction timing patterns
+5. Legal description quality
+
+OUTPUT FORMAT (STRICT):
+Risk Score: [0-100]
+Risk Level: [LOW/MEDIUM/HIGH]
+Confidence: [0-100]%
+
+KEY FINDINGS:
+• [bullet]
+• [bullet]
+• [bullet]
+
+DETAILED ANALYSIS:
+[2 short paragraphs]
+
+RECOMMENDATION:
+[APPROVE / REVIEW REQUIRED / REJECT] - [short reason]
+`;
+  }
+
+  getFallbackAnalysis(propertyData = {}, reason = "Gemini unavailable") {
+    let score = 20;
+    const factors = [];
+    const deedText = normalizeText(propertyData.deedText);
+
+    const price = Number(propertyData.salePrice || 0);
+    if (!Number.isFinite(price) || price <= 0) {
+      score += 20;
+      factors.push("Missing or non-positive sale price");
+    } else if (price < 50000) {
+      score += 12;
+      factors.push("Potentially below-market sale price");
+    }
+
+    if (!propertyData.ownerName || String(propertyData.ownerName).trim().length < 4) {
+      score += 15;
+      factors.push("Incomplete owner information");
+    }
+
+    if (!propertyData.address || String(propertyData.address).trim().length < 8) {
+      score += 15;
+      factors.push("Incomplete property address");
+    }
+
+    if (!propertyData.deedHash || String(propertyData.deedHash).trim().length < 16) {
+      score += 10;
+      factors.push("Weak or missing deed hash");
+    }
+
+    const redFlagPhrases = [
+      "quitclaim",
+      "as-is",
+      "without warranty",
+      "urgent sale",
+      "power of attorney",
+      "cash only",
+      "handwritten",
+      "amended deed",
+      "foreclosure",
+      "liens",
+    ];
+
+    const hits = redFlagPhrases.filter((flag) => deedText.toLowerCase().includes(flag));
+    if (hits.length > 0) {
+      score += Math.min(30, hits.length * 6);
+      factors.push(`Red-flag terms found: ${hits.slice(0, 4).join(", ")}`);
+    }
+
+    if (deedText.length > 0 && deedText.length < 80) {
+      score += 10;
+      factors.push("Very low deed text extraction quality");
+    }
+
+    const riskScore = clampNumber(score, 0, 100, 55);
+    const riskLevel = riskLevelFromScore(riskScore);
+
+    return {
+      success: true,
+      riskScore,
+      riskLevel,
+      confidence: 50,
+      recommendation: riskLevel === "HIGH" ? "REVIEW REQUIRED" : "APPROVE",
+      factors,
+      analysis:
+        `Fallback analysis (${reason}). ` +
+        (factors.length ? factors.join("; ") : "Insufficient context for deeper analysis."),
+      fallback: true,
+      method: "fallback",
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async extractTextFromPDF(pdfBuffer) {
+    try {
+      const parsed = await pdfParse(pdfBuffer);
+      const extractedText = normalizeText(parsed.text);
+      return {
+        text: extractedText,
+        numPages: Number(parsed.numpages || 0),
+        info: parsed.info || {},
+      };
+    } catch (error) {
+      return {
+        text: "",
+        numPages: 0,
+        info: {},
+        error: error.message,
+      };
+    }
+  }
+
+  async analyzeDeedText(deedText, propertyData, transactionHistory = []) {
+    const prompt = this.buildFraudAnalysisPrompt(deedText, propertyData, transactionHistory);
+    const { result, modelName } = await this.generateContentWithFallback(prompt, false);
+    const response = await result.response;
+    const analysisText = response.text();
+    const parsed = this.parseFraudAnalysis(analysisText);
+
+    return {
+      success: true,
+      riskScore: parsed.score,
+      riskLevel: parsed.level,
+      confidence: parsed.confidence,
+      recommendation: parsed.recommendation,
+      factors: parsed.factors,
+      analysis: analysisText,
+      method: "text",
+      model: modelName,
+      deedTextLength: normalizeText(deedText).length,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async analyzeDeedPDFVisually(pdfBuffer, propertyData = {}) {
+    const base64PDF = Buffer.from(pdfBuffer).toString("base64");
+    const prompt = `Analyze this property deed document for fraud indicators.
+
+Property:
+- Address: ${propertyData.address || "N/A"}
+- Owner: ${propertyData.ownerName || "N/A"}
+- Price: $${safeLocaleNumber(propertyData.salePrice)}
+
+Look for visual tampering, missing signatures/stamps, inconsistencies, or alteration clues.
+Return:
+Risk Score: [0-100]
+Risk Level: [LOW/MEDIUM/HIGH]
+Confidence: [0-100]%
+KEY FINDINGS:
+• [bullet]
+• [bullet]
+RECOMMENDATION:
+[APPROVE / REVIEW REQUIRED / REJECT] - [short reason]`;
+
+    const { result, modelName } = await this.generateContentWithFallback(
+      [
+        prompt,
+        {
+          inlineData: {
+            data: base64PDF,
+            mimeType: "application/pdf",
+          },
+        },
+      ],
+      true
+    );
+    const response = await result.response;
+    const analysisText = response.text();
+    const parsed = this.parseFraudAnalysis(analysisText);
+
+    return {
+      success: true,
+      riskScore: parsed.score,
+      riskLevel: parsed.level,
+      confidence: parsed.confidence,
+      recommendation: parsed.recommendation,
+      factors: parsed.factors,
+      analysis: analysisText,
+      method: "visual",
+      model: modelName,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async analyzeDeedForFraud(pdfBuffer, propertyData = {}, transactionHistory = []) {
+    try {
+      const extraction = await this.extractTextFromPDF(pdfBuffer);
+      const payload = {
+        ...propertyData,
+        deedText: extraction.text,
+      };
+
+      if (extraction.text && extraction.text.length >= 80) {
+        const textResult = await this.analyzeDeedText(extraction.text, payload, transactionHistory);
+        return {
+          ...textResult,
+          extraction: {
+            method: "pdf_text",
+            numPages: extraction.numPages,
+            extractedChars: extraction.text.length,
+          },
+        };
+      }
+
+      const visualResult = await this.analyzeDeedPDFVisually(pdfBuffer, payload);
+      return {
+        ...visualResult,
+        extraction: {
+          method: "visual_pdf",
+          numPages: extraction.numPages,
+          extractedChars: extraction.text.length,
+          extractionError: extraction.error || null,
+        },
+      };
+    } catch (error) {
+      if (STRICT_GEMINI) throw error;
+      return this.getFallbackAnalysis(propertyData, error.message || "analysis failure");
+    }
+  }
+
+  async detectFraudRisk(propertyData = {}) {
+    try {
+      if (propertyData.pdfBuffer && Buffer.isBuffer(propertyData.pdfBuffer)) {
+        return await this.analyzeDeedForFraud(
+          propertyData.pdfBuffer,
+          propertyData,
+          propertyData.transactionHistory || []
+        );
+      }
+
+      if (propertyData.deedText && normalizeText(propertyData.deedText).length > 0) {
+        return await this.analyzeDeedText(
+          propertyData.deedText,
+          propertyData,
+          propertyData.transactionHistory || []
+        );
+      }
+
+      return this.getFallbackAnalysis(propertyData, "No PDF/deed text provided");
+    } catch (error) {
+      if (STRICT_GEMINI) throw error;
+      return this.getFallbackAnalysis(propertyData, error.message || "detectFraudRisk failure");
+    }
+  }
+
   async analyzeProperty(propertyData, transactionHistory = []) {
-    try {
-      console.log('Analyzing property with Gemini AI...');
-      
-      const historyText = transactionHistory.length > 0
-        ? transactionHistory.map(t => `
-          - Date: ${new Date(t.CREATED_AT).toLocaleDateString()}
-          - Owner: ${t.OWNER_NAME}
-          - Price: $${t.SALE_PRICE.toLocaleString()}
-        `).join('\n')
-        : 'No transaction history available.';
+    const historyText = transactionHistory.length
+      ? transactionHistory
+          .map(
+            (t) =>
+              `- ${new Date(t.CREATED_AT || t.created_at || Date.now()).toLocaleDateString()}: ` +
+              `$${safeLocaleNumber(t.SALE_PRICE || t.sale_price || 0)} owned by ${t.OWNER_NAME || t.owner_name || "Unknown"}`
+          )
+          .join("\n")
+      : "No transaction history available.";
 
-      const prompt = `
-        Analyze this property and provide investment insights:
-        
-        Property Details:
-        - Address: ${propertyData.address}
-        - Current Owner: ${propertyData.ownerName}
-        - Current Price: $${propertyData.salePrice.toLocaleString()}
-        
-        Transaction History:
-        ${historyText}
-        
-        Provide a brief analysis covering:
-        1. Price trend (appreciating/depreciating)
-        2. Ownership stability
-        3. Risk assessment
-        4. Investment recommendation
-        
-        Keep response under 200 words, professional tone.
-      `;
+    const prompt = `You are a real estate investment advisor.
+Analyze this property:
+- Address: ${propertyData.address || "N/A"}
+- Current Owner: ${propertyData.ownerName || "N/A"}
+- Current Price: $${safeLocaleNumber(propertyData.salePrice)}
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const analysis = response.text();
+History:
+${historyText}
 
-      console.log('✓ Analysis generated');
+Provide:
+1. Price trend
+2. Ownership stability
+3. Risk assessment
+4. Investment recommendation
+Keep under 250 words.`;
 
-      return {
-        success: true,
-        analysis: analysis,
-        timestamp: new Date().toISOString()
-      };
-      
-    } catch (error) {
-      console.error('✗ Error analyzing with Gemini:', error);
-      throw error;
-    }
+    const { result, modelName } = await this.generateContentWithFallback(prompt, false);
+    const response = await result.response;
+    return {
+      success: true,
+      analysis: response.text(),
+      model: modelName,
+      timestamp: new Date().toISOString(),
+    };
   }
 
-  /**
-   * Detect fraud risk
-   */
-  async detectFraudRisk(propertyData) {
-    try {
-      console.log('Detecting fraud risk with Gemini AI...');
-      
-      const prompt = `
-        Analyze this property transaction for fraud indicators:
-        
-        Property ID: ${propertyData.propertyId}
-        Address: ${propertyData.address}
-        Owner: ${propertyData.ownerName}
-        Sale Price: $${propertyData.salePrice.toLocaleString()}
-        
-        Evaluate:
-        1. Price reasonableness (unusually low/high)
-        2. Address format validity
-        3. Owner information completeness
-        4. Overall fraud likelihood
-        
-        Provide a fraud risk score (0-100) where:
-        - 0-30: LOW risk
-        - 31-70: MEDIUM risk
-        - 71-100: HIGH risk
-        
-        Format response as: "Risk Score: XX/100 - [brief explanation]"
-        Keep under 100 words.
-      `;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const riskAnalysis = response.text();
-
-      // Extract risk score
-      const scoreMatch = riskAnalysis.match(/Risk Score:\s*(\d+)/i);
-      const riskScore = scoreMatch ? parseInt(scoreMatch[1]) : 50;
-
-      const riskLevel = riskScore < 31 ? 'LOW' : riskScore < 71 ? 'MEDIUM' : 'HIGH';
-
-      console.log(`✓ Fraud risk detected: ${riskLevel} (${riskScore}/100)`);
-
-      return {
-        success: true,
-        riskScore: riskScore,
-        riskLevel: riskLevel,
-        analysis: riskAnalysis,
-        timestamp: new Date().toISOString()
-      };
-      
-    } catch (error) {
-      console.error('✗ Error detecting fraud with Gemini:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Generate property description
-   */
   async generatePropertyDescription(propertyData) {
-    try {
-      console.log('Generating property description with Gemini AI...');
-      
-      const prompt = `
-        Write a professional property listing description for:
-        
-        Address: ${propertyData.address}
-        Price: $${propertyData.salePrice.toLocaleString()}
-        
-        Highlights:
-        - Blockchain-verified authenticity (tamper-proof records)
-        - Location benefits
-        - Investment potential
-        
-        Tone: Professional, trustworthy, modern
-        Length: 100-150 words
-      `;
+    const prompt = `Write a professional property listing description.
+Address: ${propertyData.address || "N/A"}
+Price: $${safeLocaleNumber(propertyData.salePrice)}
+Owner: ${propertyData.ownerName || "N/A"}
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const description = response.text();
+Include:
+- location value
+- investment perspective
+- blockchain-verification trust signal
+Length: 120-180 words.`;
 
-      console.log('✓ Description generated');
-
-      return {
-        success: true,
-        description: description,
-        timestamp: new Date().toISOString()
-      };
-      
-    } catch (error) {
-      console.error('✗ Error generating description with Gemini:', error);
-      throw error;
-    }
+    const { result, modelName } = await this.generateContentWithFallback(prompt, false);
+    const response = await result.response;
+    return {
+      success: true,
+      description: response.text(),
+      model: modelName,
+      timestamp: new Date().toISOString(),
+    };
   }
 
-  /**
-   * Chat with property AI assistant
-   */
-  async chatWithProperty(propertyId, userQuestion, propertyData, context = []) {
+  async chatWithProperty(propertyId, userQuestion, propertyData, conversationHistory = []) {
+    const historyText = conversationHistory.length
+      ? conversationHistory.map((m) => `${m.role}: ${m.message}`).join("\n")
+      : "No previous conversation.";
+
+    const prompt = `You are a property registry assistant.
+Property:
+- ID: ${propertyData.propertyId || propertyId}
+- Address: ${propertyData.address || "N/A"}
+- Owner: ${propertyData.ownerName || "N/A"}
+- Price: $${safeLocaleNumber(propertyData.salePrice)}
+
+Conversation:
+${historyText}
+
+User Question:
+${userQuestion}
+
+Answer clearly in under 150 words.`;
+
+    const { result, modelName } = await this.generateContentWithFallback(prompt, false);
+    const response = await result.response;
+    return {
+      success: true,
+      answer: response.text(),
+      model: modelName,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async compareProperties(properties = []) {
+    const list = properties
+      .map(
+        (p, i) =>
+          `Property ${i + 1}: ${p.address || "N/A"}, owner ${p.ownerName || "N/A"}, price $${safeLocaleNumber(p.salePrice)}`
+      )
+      .join("\n");
+
+    const prompt = `Compare these properties for investment quality:
+${list}
+
+Return:
+1. Best choice with reason
+2. Ranking
+3. Key risk notes
+Under 250 words.`;
+
+    const { result, modelName } = await this.generateContentWithFallback(prompt, true);
+    const response = await result.response;
+    return {
+      success: true,
+      comparison: response.text(),
+      model: modelName,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async healthCheck() {
     try {
-      console.log('Processing chat with Gemini AI...');
-      
-      const conversationHistory = context.length > 0
-        ? context.map(c => `${c.role}: ${c.message}`).join('\n')
-        : 'No previous conversation.';
-
-      const prompt = `
-        You are an AI assistant for a blockchain property registry.
-        
-        Property Context:
-        - Property ID: ${propertyData.propertyId}
-        - Address: ${propertyData.address}
-        - Owner: ${propertyData.ownerName}
-        - Price: $${propertyData.salePrice.toLocaleString()}
-        - Blockchain: Verified on Solana
-        
-        Conversation History:
-        ${conversationHistory}
-        
-        User Question: ${userQuestion}
-        
-        Provide a helpful response about this property.
-        If question is unrelated to the property, politely redirect.
-        Keep response under 150 words.
-      `;
-
-      const result = await this.model.generateContent(prompt);
+      if (!this.genAI) {
+        return {
+          status: "unhealthy",
+          apiKey: "missing",
+          model: GEMINI_MODEL_FLASH,
+          error: "GEMINI_API_KEY missing",
+        };
+      }
+      const { result, modelName } = await this.generateContentWithFallback(
+        "Reply only with OK",
+        false
+      );
       const response = await result.response;
-      const answer = response.text();
-
-      console.log('✓ Chat response generated');
-
+      const text = response.text();
       return {
-        success: true,
-        answer: answer,
-        timestamp: new Date().toISOString()
+        status: text.toUpperCase().includes("OK") ? "healthy" : "degraded",
+        model: modelName,
+        apiKey: "configured",
+        test: text.slice(0, 120),
       };
-      
     } catch (error) {
-      console.error('✗ Error in property chat with Gemini:', error);
-      throw error;
+      return {
+        status: "unhealthy",
+        model: GEMINI_MODEL_FLASH,
+        apiKey: GEMINI_API_KEY ? "configured" : "missing",
+        error: error.message,
+      };
     }
   }
 }
